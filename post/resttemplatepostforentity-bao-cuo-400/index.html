@@ -5,7 +5,7 @@
     
 <meta charset="utf-8" >
 
-<title>ES 多条件过滤查询 | Gridea</title>
+<title>restTemplate.postForEntity报错400 | Gridea</title>
 <meta name="description" content="温故而知新">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -80,44 +80,43 @@
       <div class="content-container">
         <div class="post-detail">
           
-          <h2 class="post-title">ES 多条件过滤查询</h2>
+          <h2 class="post-title">restTemplate.postForEntity报错400</h2>
           <div class="post-info post-detail-info">
             <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
             
-              <span>
-                <i class="icon-pricetags-outline"></i>
-                
-                  <a href="https://lehy786.github.io/tag/5AwzE_maA/">
-                    ES
-                    
-                  </a>
-                
-              </span>
-            
           </div>
           <div class="post-content">
-            <pre><code>// Java ES 多条件过滤查询条件
-BoolQueryBuilder queryTotal = QueryBuilders.boolQuery();
-if(StringUtils.isNotBlank(params.getRemarkFlag())){
-                if(&quot;1&quot;.equals(params.getRemarkFlag())){
-                    queryTotal.filter(QueryBuilders.existsQuery(&quot;remarks&quot;));
-                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;));
-                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,0));
-                }else if(&quot;2&quot;.equals(params.getRemarkFlag())){
-                    queryTotal.must(QueryBuilders.boolQuery()
-                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,0))
-                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;))
-                            .should(QueryBuilders.boolQuery()
-                                    .mustNot(QueryBuilders.existsQuery(&quot;remarks&quot;))));
-                }
-}
-
+            <p>报错原因基本两个：</p>
+<ol>
+<li>HEADER错误，未设置application/json等；</li>
+<li>BODY错误，传递的参数序列化或反序列化出问题。</li>
+</ol>
+<p>如果传递的对象中，有Abstract类，则无法进行反序列化：</p>
+<pre><code>public interface ComponentInstance{...}
 </code></pre>
+<pre><code>public class Bean{
+    String name;
+    ComponentInstance originInstance;
+    ComponentInstance alterInstance;
+}
+</code></pre>
+<pre><code>ResponseEntity&lt;String&gt; result = restTemplate.postForEntity(url, bean, String.class);
+</code></pre>
+<p>以上这种情况就会报错400 null。</p>
+<p>需要使用一个可以序列化的对象替代<code>ComponentInstance alterInstance</code>才可。</p>
 
           </div>
         </div>
 
         
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/es-duo-tiao-jian-guo-lu-cha-xun/">
+              <h3 class="post-title">
+                下一篇：ES 多条件过滤查询
+              </h3>
+            </a>
+          </div>
+          
       </div>
 
       

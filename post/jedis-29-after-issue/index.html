@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>jedis-2.9-after-issue | Gridea</title>
+<meta name="description" content="温故而知新">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://lehy786.github.io/favicon.ico?v=1618884189702">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://lehy786.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://lehy786.github.io">
+        <img class="avatar" src="https://lehy786.github.io/images/avatar.png?v=1618884189702" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://lehy786.github.io">
+        <h1 class="site-title">Gridea</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            博文
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">jedis-2.9-after-issue</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://lehy786.github.io/tag/Q0MTRx9du/">
+                    Redis
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <h1 id="jedis-290-forward">Jedis 2.9.0 forward</h1>
+<h4 id="writing-to-read-only-slave-fails-silently-inside-of-multi-block-1473-290">· Writing to read-only slave fails silently inside of MULTI block #1473  <code>2.9.0</code></h4>
+<p>以事务方式写入只读的slave，没有返回期望的报错信息，虽然确实写入失败。</p>
+<pre><code>Jedis j = new Jedis(&quot;read-only-slave&quot;);
+Transaction t = j.multi();
+t.set(&quot;test&quot;, &quot;test&quot;);
+List&lt;Object&gt; results = t.exec();
+</code></pre>
+<h4 id="if-uri-contains-dbindex-timeout-configuration-doesnt-work-1824-290">· if uri contains dbIndex, timeout configuration doesn't work #1824  <code>2.9.0</code></h4>
+<p>当连接redis的uri包含库索引时，配置的超时选项会失效，生效的为默认配置。</p>
+<h4 id="bug-report-the-command-jedisblpop-may-block-the-thread-forever-2217-330">· [BUG REPORT] The Command Jedis#blpop may block the thread forever. #2217  <code>3.3.0</code></h4>
+<ol>
+<li>Use<code>redis.clients.jedis.Jedis#blpop(int, java.lang.String)</code> to pull value in the redis list.</li>
+<li>In the method <code>redis.clients.jedis.Connection#sendCommand(redis.clients.jedis.commands.ProtocolCommand, byte[]...)</code>, we close the connection before the method <code>redis.clients.jedis.Protocol#sendCommand()</code> is executed.</li>
+<li>Push value to the redis list, but <code>redis.clients.jedis.Jedis#blpop(int, java.lang.String)</code> cannot pull the value, but block forever.</li>
+</ol>
+<h4 id="redis-streams-implementations-will-indefinitely-block-if-redis-server-doesnt-send-a-response-2219-330">· Redis streams implementations will indefinitely block if Redis server doesn't send a response #2219  <code>3.3.0</code></h4>
+<p>如题。</p>
+<h4 id="use-unwatch-between-multi-and-exec-and-throw-nullpointexception-when-executing-exec-1614290">· Use unwatch between multi and exec, and throw NullPointException when executing Exec #1614<code>2.9.0</code></h4>
+<pre><code>    jedis.watch(&quot;key&quot;);
+    Transaction transaction = jedis.multi();
+    jedis.unwatch();
+    transaction.set(&quot;key&quot;,&quot;value&quot;);
+    transaction.exec();
+</code></pre>
+<h4 id="redis-cluster-pexpireat-error-1629-290">· redis cluster pexpireAt error #1629 <code>2.9.0</code></h4>
+<p>BinaryJedisCluster.java中的pexpireAt()方法，实际执行应该调用Jedis中的pexpireAt()，2.9.0中错误地调用了Jedis中的pexpire()，导致key过期时间会很长。</p>
+<h4 id="bitop-not-unexpected-behavior-1635-290">· BITOP NOT unexpected behavior #1635 <code>2.9.0</code></h4>
+<p>下面的代码能执行成功：</p>
+<pre><code>new Jedis().bitop(BitOP.NOT, &quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;);
+</code></pre>
+<p>但实际上直接在服务器执行命令，返回：</p>
+<pre><code>ERR ERR BITOP NOT must be called with a single source key.
+</code></pre>
+<p>正常来说，此处应该抛错。</p>
+<h4 id="jedis-causes-outofmemoryexception-after-sockettimeoutexception-1747-290">· Jedis causes OutOfMemoryException after SocketTimeoutException #1747  <code>2.9.0</code></h4>
+<p>因超时时间设置过短，导致原本正常的连接读取只进行了一部分，而后因SocketTimeoutException断开。这种正常连接意外断开导致的问题是：</p>
+<p>因为jedis连接在确保流读取的完整时会分配一个数组来避免意外地读取到一个*字符，所以星号字符后可能会跟随一个很大的数/负数（因为完整的数被截断了或者加上了下一个字节的内容），导致这个分配的数组造成OOM。（RESP协议中，星号后面跟命令的长度。）</p>
+<h4 id="nxxx-parameter-doesnt-seem-to-be-optional-in-set-method-1800">· NXXX parameter doesn't seem to be optional in set() method #1800</h4>
+<p>使用<code>jedis.set(key, value, nxxx, expx, ttl);</code>，当nxxx选项为空时：</p>
+<pre><code>nxxx = null
+Exception
+! redis.clients.jedis.exceptions.JedisDataException: value sent to redis cannot be null
+! at redis.clients.util.SafeEncoder.encode(SafeEncoder.java:28)
+! at redis.clients.jedis.Client.set(Client.java:52)
+! at redis.clients.jedis.Jedis.set(Jedis.java:138)
+
+nxxx = &quot;&quot;
+Exception
+! redis.clients.jedis.exceptions.JedisDataException: ERR syntax error
+! at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+! at redis.clients.jedis.Protocol.process(Protocol.java:161)
+! at redis.clients.jedis.Protocol.read(Protocol.java:215)
+! at redis.clients.jedis.Connection.readProtocolWithCheckingBroken(Connection.java:340)
+! at redis.clients.jedis.Connection.getStatusCodeReply(Connection.java:239)
+! at redis.clients.jedis.Jedis.set(Jedis.java:139)
+</code></pre>
+<h4 id="jedisclusterinfocache-renewclusterslots-is-not-thread-safe-1854-290">· JedisClusterInfoCache renewClusterSlots() is not thread-safe #1854 <code>2.9.0</code></h4>
+<p>JedisClusterInfoCache中的renewClusterSlots()方法是非线程安全的，没有双重锁检验。</p>
+<h4 id="race-condition-in-jedissentinelpoolinitpool-causes-jedisconnectionexception-on-getresource-1910-300">· Race condition in JedisSentinelPool.initPool() causes JedisConnectionException on getResource() #1910 <code>3.0.0</code></h4>
+<p>启动时多个线程同时调用<code>JedisSentinelPool.initPool()</code> ，导致<code>getResource()</code>调用失败报错。多线程问题，<code>MasterListener</code>和``JedisSentinelPool<code>都会调用</code>initPool()`。</p>
+<h4 id="error-on-streams-with-transactions-1989-310-m1">· Error on Streams with Transactions #1989 <code>3.1.0-m1</code></h4>
+<p>在事务中执行stream命令报错。</p>
+<pre><code>执行：
+Transaction t = jedis.multi();
+t.xadd(streamKey, StreamEntryID.NEW_ENTRY, Map.of(&quot;foo&quot;, &quot;bar&quot;));
+t.xadd(streamKey, StreamEntryID.NEW_ENTRY, Map.of(&quot;foo&quot;, &quot;bar&quot;));
+Response&lt;List&lt;StreamEntry&gt;&gt; results = t.xrange(streamKey, null, null, 2);
+t.exec();
+
+错误：
+java.lang.ClassCastException:` class [B cannot be cast to class java.lang.String ([B and        java.lang.String are in module java.base of loader 'bootstrap')
+at redis.clients.jedis.BuilderFactory$21.build(BuilderFactory.java:484)
+at redis.clients.jedis.BuilderFactory$21.build(BuilderFactory.java:477)
+at redis.clients.jedis.Response.build(Response.java:61)
+at redis.clients.jedis.Response.get(Response.java:37)
+at redis.clients.jedis.Transaction.exec(Transaction.java:53)
+</code></pre>
+<h4 id="public-string-xgroupdelconsumerfinal-string-key-final-string-groupname-final-string-consumername-has-bug-2143-330">· public String xgroupDelConsumer(final String key, final String groupname, final String consumerName) has bug? #2143 <code>3.3.0</code></h4>
+<pre><code>执行：
+jedis.xgroupDelConsumer(&quot;mykey1&quot;, &quot;mygroup1&quot;, &quot;myconsumer1&quot;);
+报错：
+java.lang.ClassCastException: java.lang.Long cannot be cast to [B
+</code></pre>
+<h4 id="resouce-cannot-be-released-2160-2100">· resouce cannot be released #2160 <code>2.10.0</code></h4>
+<p>当dateSource被reset的时候，此时返还的connection可能已经分配给其他线程，导致最终报错：</p>
+<pre><code>redis.clients.jedis.exceptions.JedisExhaustedPoolException: Could not get a resource since the pool is exhausted
+</code></pre>
+<p>[Jedis.class]未修复之前：</p>
+<pre><code>  public void close() {
+    if (dataSource != null) {
+      if (client.isBroken()) {
+        this.dataSource.returnBrokenResource(this);
+      } else {
+        this.dataSource.returnResource(this);
+      }
+      this.dataSource = null;
+    } else {
+      super.close();
+    }
+    // ...
+  }
+</code></pre>
+<p>修复后：</p>
+<pre><code>  public void close() {
+    if (dataSource != null) {
+      JedisPoolAbstract pool = this.dataSource;
+      this.dataSource = null;
+      if (client.isBroken()) {
+        pool.returnBrokenResource(this);
+      } else {
+        pool.returnResource(this);
+      }
+    } else {
+      super.close();
+    }
+    // ...
+  }
+</code></pre>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/jedis-chang-jian-yi-chang/">
+              <h3 class="post-title">
+                下一篇：jedis常见异常
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">温故而知新</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://lehy786.github.io/atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>

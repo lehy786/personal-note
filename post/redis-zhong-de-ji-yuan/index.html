@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>redis中的纪元 | Gridea</title>
+<meta name="description" content="温故而知新">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://lehy786.github.io/favicon.ico?v=1618884189702">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://lehy786.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://lehy786.github.io">
+        <img class="avatar" src="https://lehy786.github.io/images/avatar.png?v=1618884189702" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://lehy786.github.io">
+        <h1 class="site-title">Gridea</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            博文
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">redis中的纪元</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://lehy786.github.io/tag/Q0MTRx9du/">
+                    Redis
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <h2 id="纪元epoch"><strong>纪元（epoch）</strong></h2>
+<p>Redis Cluster 使用了类似于 <em><strong>Raft</strong></em> 算法 <em><strong>term</strong></em>（任期）的概念称为 <em><strong>epoch</strong></em>（纪元），用来给事件增加版本号。Redis 集群中的纪元主要是两种：<em><strong>currentEpoch</strong></em> 和 <em><strong>configEpoch</strong></em>。</p>
+<h2 id="currentepoch"><strong>currentEpoch</strong></h2>
+<p>这是一个集群状态相关的概念，可以当做记录集群状态变更的递增版本号。每个集群节点，都会通过 server.cluster-&gt;currentEpoch 记录当前的 <em><strong>currentEpoch</strong></em>。</p>
+<p>集群节点创建时，不管是 <strong>master</strong> 还是 <strong>slave</strong>，都置 <strong>currentEpoch</strong> 为 0。当前节点接收到来自其他节点的包时，如果发送者的 <strong>currentEpoch</strong>（消息头部会包含发送者的 <em><strong>currentEpoch</strong></em>）大于当前节点的***currentEpoch***，那么当前节点会更新 <strong>currentEpoch</strong> 为发送者的 <em><strong>currentEpoch</strong></em>。因此，集群中所有节点的 <em><strong>currentEpoch</strong></em> 最终会达成一致，相当于对集群状态的认知达成了一致。</p>
+<h2 id="currentepoch-作用"><strong>currentEpoch 作用</strong></h2>
+<p><strong>currentEpoch</strong> 作用在于，当集群的状态发生改变，某个节点为了执行一些动作需要寻求其他节点的同意时，就会增加 <em><strong>currentEpoch</strong></em> 的值。目前 <em><strong>currentEpoch</strong></em> 只用于 <strong>slave</strong> 的故障转移流程，这就跟哨兵中的sentinel.current_epoch 作用是一模一样的。当 <em><strong>slave A</strong></em> 发现其所属的 **<em>master<em><strong>下线时，就会试图发起故障转移流程。首先就是增加 <strong>currentEpoch</strong> 的值，这个增加后的 <strong>currentEpoch</strong> 是所有集群节点中最大的。然后</strong>slave A</em></em> 向所有节点发起拉票请求，请求其他 <em><strong>master</strong></em> 投票给自己，使自己能成为新的 <em><strong>master</strong></em>。其他节点收到包后，发现发送者的 <em><strong>currentEpoch</strong></em> 比自己的 <em><strong>currentEpoch</strong></em> 大，就会更新自己的 <em><strong>currentEpoch</strong></em>，并在尚未投票的情况下，投票给 <em><strong>slave A</strong></em>，表示同意使其成为新的 <em><strong>master</strong></em>。</p>
+<h2 id="configepoch"><strong>configEpoch</strong></h2>
+<p>这是一个集群节点配置相关的概念，每个集群节点都有自己独一无二的 configepoch。所谓的节点配置，实际上是指节点所负责的槽位信息。</p>
+<p>每一个 <strong>master</strong> 在向其他节点发送包时，都会附带其 <strong>configEpoch</strong> 信息，以及一份表示它所负责的 <strong>slots</strong> 信息。而 <strong>slave</strong> 向其他节点发送包时，其包中的 <em><strong>configEpoch</strong></em> 和负责槽位信息，是其 <strong>master</strong> 的 <strong>configEpoch</strong> 和负责的 <em><strong>slot</strong></em> 信息。节点收到包之后，就会根据包中的 ***configEpoch***和负责的 <em><strong>slots</strong></em> 信息，记录到相应节点属性中。</p>
+<h2 id="configepoch-作用"><strong>configEpoch 作用</strong></h2>
+<p><strong>configEpoch</strong> 主要用于解决不同的节点的配置发生冲突的情况。举个例子就明白了：节点A 宣称负责 <strong>slot 1</strong>，其向外发送的包中，包含了自己的 <strong>configEpoch</strong> 和负责的 <strong>slots</strong> 信息。节点 C 收到 A 发来的包后，发现自己当前没有记录 <em><strong>slot 1</strong></em> 的负责节点（也就是 server.cluster-&gt;slots[1] 为 NULL），就会将 A 置为 <em><strong>slot 1</strong></em> 的负责节点（server.cluster-&gt;slots[1] = A），并记录节点 A 的 <strong>configEpoch</strong>。后来，节点 C 又收到了 B 发来的包，它也宣称负责 <em><strong>slot 1</strong></em>，此时，如何判断 <em><strong>slot 1</strong></em> 到底由谁负责呢？</p>
+<p>这就是 <strong>configEpoch</strong> 起作用的时候了，C 在 B 发来的包中，发现它的 <em><strong>configEpoch</strong></em>，要比 A 的大，说明 B 是更新的配置。因此，就将 <strong>slot 1</strong> 的负责节点设置为 B（server.cluster-&gt;slots[1] = B）。在 <strong>slave</strong> 发起选举，获得足够多的选票之后，成功当选时，也就是 <strong>slave</strong> 试图替代其已经下线的旧 <strong>master</strong>，成为新的 <strong>master</strong> 时，会增加它自己的 <em><strong>configEpoch</strong></em>，使其成为当前所有集群节点的 <em><strong>configEpoch</strong></em> 中的最大值。这样，该 <em><strong>slave</strong></em> 成为 <em><strong>master</strong></em> 后，就会向所有节点发送广播包，强制其他节点更新相关 <em><strong>slots</strong></em> 的负责节点为自己。</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/redis-ji-qun-guan-li/">
+              <h3 class="post-title">
+                下一篇：redis集群管理
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">温故而知新</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://lehy786.github.io/atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>

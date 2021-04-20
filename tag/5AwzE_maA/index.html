@@ -5,7 +5,7 @@
     
 <meta charset="utf-8" >
 
-<title>ES 多条件过滤查询 | Gridea</title>
+<title>ES | Gridea</title>
 <meta name="description" content="温故而知新">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -78,49 +78,48 @@
 
 
       <div class="content-container">
-        <div class="post-detail">
-          
-          <h2 class="post-title">ES 多条件过滤查询</h2>
-          <div class="post-info post-detail-info">
-            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
-            
-              <span>
-                <i class="icon-pricetags-outline"></i>
-                
-                  <a href="https://lehy786.github.io/tag/5AwzE_maA/">
-                    ES
-                    
-                  </a>
-                
-              </span>
-            
-          </div>
-          <div class="post-content">
-            <pre><code>// Java ES 多条件过滤查询条件
-BoolQueryBuilder queryTotal = QueryBuilders.boolQuery();
-if(StringUtils.isNotBlank(params.getRemarkFlag())){
-                if(&quot;1&quot;.equals(params.getRemarkFlag())){
-                    queryTotal.filter(QueryBuilders.existsQuery(&quot;remarks&quot;));
-                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;));
-                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,0));
-                }else if(&quot;2&quot;.equals(params.getRemarkFlag())){
-                    queryTotal.must(QueryBuilders.boolQuery()
-                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,0))
-                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;))
-                            .should(QueryBuilders.boolQuery()
-                                    .mustNot(QueryBuilders.existsQuery(&quot;remarks&quot;))));
-                }
-}
 
-</code></pre>
-
-          </div>
+        <div class="current-tag-container">
+          <h2 class="title">
+            <i class="icon icon-pricetags-outline"></i> ES
+          </h2> 
         </div>
 
         
+<section class="post-item">
+    <div class="content">
+      <a href="https://lehy786.github.io/post/es-duo-tiao-jian-guo-lu-cha-xun/">
+        <h2 class="post-title">ES 多条件过滤查询</h2>
+      </a>
+      <div class="post-abstract">
+        
       </div>
+      <div class="post-info">
+        <span><i class="icon icon-calendar-outline"></i> 2021-04-20</span>
+        
+          <span>
+            <i class="icon icon-pricetags-outline"></i>
+            
+              <a href="https://lehy786.github.io/tag/5AwzE_maA/">
+                ES
+                
+              </a>
+            
+          </span>
+        
+      </div>
+    </div>
+    
+  </section>
 
-      
+
+<div class="pagination-container">
+  
+  
+</div>
+
+
+      </div>
 
       <div class="site-footer">
   <div class="slogan">温故而知新</div>

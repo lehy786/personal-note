@@ -1,0 +1,321 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>jedis集群maxTotal等配置 | Gridea</title>
+<meta name="description" content="温故而知新">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://lehy786.github.io/favicon.ico?v=1618884189702">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://lehy786.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://lehy786.github.io">
+        <img class="avatar" src="https://lehy786.github.io/images/avatar.png?v=1618884189702" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://lehy786.github.io">
+        <h1 class="site-title">Gridea</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            博文
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">jedis集群maxTotal等配置</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://lehy786.github.io/tag/Q0MTRx9du/">
+                    Redis
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <h3 id="关于jedis集群maxtotal等配置连接数概念是否连接到每个实例的观察">关于Jedis集群maxTotal等配置，连接数概念是否连接到每个实例的观察</h3>
+<h4 id="结论">结论</h4>
+<p>根据Jedis-2.9.0的源码实现，得出连接池设置公式如下：<br>
+1） 应用端最大连接数估算公式：maxTotal * pod数 &lt;10000* 0.8<br>
+2） 应用端最大闲置连接数设置： 0 &lt; maxIdel &lt;= maxTotal<br>
+3） 爆款场景建议: maxIdel == maxTotal == Tomcat线程数， 并满足以上公式<br>
+maxTotal、maxIdle、minIdle：均针对每个实例的连接数设置</p>
+<h4 id="代码分析">代码分析：</h4>
+<p>首先看最主要的代码处，该Cache保存cluster对应的槽位信息和节点信息，可以根据槽位或根据节点去不同的连接池借取连接使用。此处为cluster中的一个node新建连接池。</p>
+<pre><code class="language-java">//JedisClusterInfoCache.java 保存对应的槽和节点
+private final Map&lt;String, JedisPool&gt; nodes = new HashMap&lt;String, JedisPool&gt;(); // 保存节点对应的连接池
+private final Map&lt;Integer, JedisPool&gt; slots = new HashMap&lt;Integer, JedisPool&gt;(); // 保存slot对应的连接池 slot-&gt;node-&gt;pool
+private final GenericObjectPoolConfig poolConfig; // 配置的连接池参数，为一份
+//...
+public JedisPool setupNodeIfNotExist(HostAndPort node) {
+    w.lock();
+    try {
+        String nodeKey = getNodeKey(node);
+        JedisPool existingPool = nodes.get(nodeKey);
+        if (existingPool != null) return existingPool;
+
+        // 此处新建连接池使用的配置，为传入的poolConfig，所有节点使用同样连接池配置
+        JedisPool nodePool = new JedisPool(poolConfig, node.getHost(), node.getPort(),
+        	connectionTimeout, soTimeout, password, 0, null, false, null, null, null);
+        nodes.put(nodeKey, nodePool);
+        return nodePool;
+    } finally {
+    	w.unlock();
+    }
+}
+</code></pre>
+<p>而关于连接的管理：</p>
+<pre><code class="language-java">// JedisClusterConnectionHandler 连接处理
+...
+abstract Jedis getConnection();  // 从JedisClusterInfoCache中的nodes中取出每个连接池，逐个连接池尝试借取可用连接
+abstract Jedis getConnectionFromSlot(int var1); // 从JedisClusterInfoCache中的slots中，返回var1槽对应的节点的连接池，在此借取连接
+public Jedis getConnectionFromNode(HostAndPort node) {
+	return this.cache.setupNodeIfNotExist(node).getResource(); // 根据节点获取对应连接池
+}
+</code></pre>
+<p>从头开始跟踪一条命令的执行过程：（get）</p>
+<pre><code class="language-java">// BinaryJedisCluster
+public byte[] get(final byte[] key) {
+return (byte[])(new JedisClusterCommand&lt;byte[]&gt;(this.connectionHandler, this.maxAttempts) {
+public byte[] execute(Jedis connection) {
+return connection.get(key);
+}
+}).runBinary(key);
+}
+</code></pre>
+<p>其中重写了<code>execute</code>方法，实际实现方法里，调用了Jedis的get接口与服务端redis交互。而<code>runBinary</code>如下，最终会调用重写的execute方法，使用***对应的connection***执行具体命令。</p>
+<pre><code class="language-java">// JedisClusterCommand 命令的执行
+public T runBinary(byte[] key) {
+    if (key == null) {
+    	throw new JedisClusterException(&quot;No way to dispatch this command to Redis Cluster.&quot;);
+    }
+ 
+	return runWithRetries(key, this.maxAttempts, false, false);
+}
+ 
+...
+ 
+private T runWithRetries(byte[] key, int attempts, boolean tryRandomNode, boolean asking) {
+    ...
+    if (tryRandomNode) {
+    	connection = connectionHandler.getConnection();
+    } else {
+    	connection = connectionHandler.getConnectionFromSlot(JedisClusterCRC16.getSlot(key));
+    }
+    ...
+    return execute(connection);
+}
+ 
+/**
+* 使用的连接为
+* 1. 随机连接
+* 2. 根据key计算得出槽位，再获取对应节点连接
+*
+</code></pre>
+<p>其中获取的连接，如<code>getConnectionFromSlot</code>，获取的是<code>JedisClusterInfoCache</code>中(最上面一段代码)<code>slots</code>保存的连接池返回的连接：</p>
+<pre><code class="language-java">public Jedis getConnectionFromSlot(int slot) {
+    JedisPool connectionPool = cache.getSlotPool(slot);
+    if (connectionPool != null) {
+        // It can't guaranteed to get valid connection because of node
+        // assignment
+        return connectionPool.getResource();
+    } else {
+        renewSlotCache(); //It's abnormal situation for cluster mode, that we have just nothing for slot, try to rediscover state
+        connectionPool = cache.getSlotPool(slot);
+        if (connectionPool != null) {
+        	return connectionPool.getResource();
+        } else {
+            //no choice, fallback to new connection to random node
+            return getConnection();
+        }
+    }
+}
+</code></pre>
+<p>slots中保存的连接池，其初始化过程为：</p>
+<pre><code class="language-java">private void initializeSlotsCache(Set&lt;HostAndPort&gt; startNodes, GenericObjectPoolConfig poolConfig, String password) {
+    Iterator var4 = startNodes.iterator();
+
+    while(var4.hasNext()) {
+        HostAndPort hostAndPort = (HostAndPort)var4.next();
+        Jedis jedis = new Jedis(hostAndPort.getHost(), hostAndPort.getPort());
+        if (password != null) {
+        	jedis.auth(password);
+        }
+
+        try {
+        	this.cache.discoverClusterNodesAndSlots(jedis);
+        	break;
+        } catch (JedisConnectionException var11) {
+        } finally {
+            if (jedis != null) {
+            jedis.close();
+        }
+
+        }
+    }
+}
+</code></pre>
+<p>在这其中去<code>discoverClusterNodesAndSlots</code>  的时候：</p>
+<pre><code class="language-java">public void discoverClusterNodesAndSlots(Jedis jedis) {
+    w.lock();
+
+    try {
+        reset();
+        List&lt;Object&gt; slots = jedis.clusterSlots();
+
+        for (Object slotInfoObj : slots) {
+            List&lt;Object&gt; slotInfo = (List&lt;Object&gt;) slotInfoObj;
+
+            if (slotInfo.size() &lt;= MASTER_NODE_INDEX) {
+            	continue;
+            }
+
+            List&lt;Integer&gt; slotNums = getAssignedSlotArray(slotInfo);
+
+            // hostInfos
+            int size = slotInfo.size();
+            for (int i = MASTER_NODE_INDEX; i &lt; size; i++) {
+                List&lt;Object&gt; hostInfos = (List&lt;Object&gt;) slotInfo.get(i);
+                if (hostInfos.size() &lt;= 0) {
+                	continue;
+                }
+
+                HostAndPort targetNode = generateHostAndPort(hostInfos);
+                setupNodeIfNotExist(targetNode);
+                if (i == MASTER_NODE_INDEX) {
+                	assignSlotsToNode(slotNums, targetNode);
+                }
+            }
+        }
+    } finally {
+    	w.unlock();
+    }
+}
+/**
+* 注意到
+* HostAndPort targetNode = generateHostAndPort(hostInfos);
+* setupNodeIfNotExist(targetNode);
+* 第一次用Jedis连接获取到集群的的槽位信息和host信息，这个hostInfos包含了所有节点(N对主从节点和端口和实例ID)
+* setupNodeIfNotExist就回到最上面一段代码，对每个targetNode都建立一个连接池。
+*
+*
+</code></pre>
+<p>至此，每个实例节点保存有一个连接池，成立。maxTotal和maxIdle等配置针对单个实例配置。</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/redis-329-after-issue/">
+              <h3 class="post-title">
+                下一篇：redis-3.2.9-after-issue
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">温故而知新</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://lehy786.github.io/atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>

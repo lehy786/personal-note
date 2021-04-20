@@ -1,0 +1,303 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>redis集群管理 | Gridea</title>
+<meta name="description" content="温故而知新">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://lehy786.github.io/favicon.ico?v=1618884189702">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://lehy786.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://lehy786.github.io">
+        <img class="avatar" src="https://lehy786.github.io/images/avatar.png?v=1618884189702" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://lehy786.github.io">
+        <h1 class="site-title">Gridea</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            博文
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">redis集群管理</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://lehy786.github.io/tag/Q0MTRx9du/">
+                    Redis
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <hr>
+<h2 id="1数据分区">1.数据分区</h2>
+<p>Redis Cluser采用虚拟槽分区;<br>
+所有的键根据哈希函数映射到0~16383整数槽内;<br>
+计算公式：slot=CRC16（key）&amp;16383。<br>
+每个节点负责一部分槽：<br>
+|-- 0-5460 --|-- 5461-10922 -- | -- 10923-16383 -- |<br>
+|-- node-1--|------- node-2 ---- | -------- node-3 ----- |</p>
+<hr>
+<h2 id="2节点连接通信">2.节点连接通信</h2>
+<h3 id="21-节点握手">2.1 节点握手</h3>
+<p>在<code>node-6379</code>上对<code>node-6380</code>执行<code>cluster meet {ip} {port}</code>，node-6379则与<code>node-6380</code>尝试进行连接：</p>
+<pre><code>1）节点6379本地创建6380节点信息对象，并发送meet消息。
+2）节点6380接受到meet消息后，保存6379节点信息并回复pong消息。
+3）之后节点6379和6380彼此定期通过ping/pong消息进行正常的节点通信。
+</code></pre>
+<h3 id="22-通信流程">2.2 通信流程</h3>
+<p>分布式存储中需要提供维护节点元数据信息的机制，即：节点负责哪些数据，是否出现故障等状态信息。<br>
+Redis集群采用P2P的<code>Gossip协议</code>。</p>
+<pre><code>通信过程说明：
+1）集群中的每个节点都会单独开辟一个TCP通道，用于节点之间彼此 通信，通信端口号在基础端口上加10000。
+2）每个节点在固定周期内通过特定规则选择几个节点发送ping消息。
+3）接收到ping消息的节点用pong消息作为响应。
+
+</code></pre>
+<h3 id="23-gossip消息">2.3 Gossip消息</h3>
+<p>gossip协议是p2p方式的通信协议。通过节点之间不断交换信息，一段时间后所有节点都会知道整个集群完整的信息。常用的Gossip消息可分为：ping消息、pong消息、meet消息、fail消息等。</p>
+<pre><code>·meet消息：用于通知新节点加入。消息发送者通知接收者加入到当前 集群，meet消息通信正常完成后，接收节点会加入到集群中并进行周期性的 ping、pong消息交换。
+</code></pre>
+<pre><code>·ping消息：集群内交换最频繁的消息，集群内每个节点每秒向多个其 他节点发送ping消息，用于检测节点是否在线和交换彼此状态信息。ping消息发送封装了自身节点和部分其他节点的状态数据。
+</code></pre>
+<pre><code>·pong消息：当接收到ping、meet消息时，作为响应消息回复给发送方确 认消息正常通信。pong消息内部封装了自身状态数据。节点也可以向集群内广播自身的pong消息来通知整个集群对自身状态进行更新。
+</code></pre>
+<pre><code>·fail消息：当节点判定集群内另一个节点下线时，会向集群内广播一个 fail消息，其他节点接收到fail消息之后把对应节点更新为下线状态。具体细节将在后面10.6节“故障转移”中说明。
+</code></pre>
+<p>所有的消息格式划分为：消息头和消息体。</p>
+<p><em><strong>消息头：</strong></em><br>
+消息头包含发送节点自身状态数据。包含了发送节点关键信息，如节点id、槽映射、节点标识（主从角色，是否下线）等。</p>
+<pre><code>typedef struct {
+    char sig[4];        /* Siganture &quot;RCmb&quot; (Redis Cluster message bus). */
+    uint32_t totlen;    /* Total length of this message */
+    uint16_t ver;       /* Protocol version, currently set to 1. */
+    uint16_t port;      /* TCP base port number. */
+    uint16_t type;      /* Message type */
+    uint16_t count;     /* Only used for some kind of messages. */
+    uint64_t currentEpoch;  /* The epoch accordingly to the sending node. */
+    uint64_t configEpoch;   /* The config epoch if it's a master, or the last
+                               epoch advertised by its master if it is a
+                               slave. */
+    uint64_t offset;    /* Master replication offset if node is a master or
+                           processed replication offset if node is a slave. */
+    char sender[CLUSTER_NAMELEN]; /* Name of the sender node */
+    unsigned char myslots[CLUSTER_SLOTS/8];
+    char slaveof[CLUSTER_NAMELEN];
+    char myip[NET_IP_STR_LEN];    /* Sender IP, if not all zeroed. */
+    char notused1[34];  /* 34 bytes reserved for future usage. */
+    uint16_t cport;      /* Sender TCP cluster bus port */
+    uint16_t flags;      /* Sender node flags */
+    unsigned char state; /* Cluster state from the POV of the sender */
+    unsigned char mflags[3]; /* Message flags: CLUSTERMSG_FLAG[012]_... */
+    union clusterMsgData data;
+} clusterMsg;
+</code></pre>
+<p><em><strong>消息体：</strong></em></p>
+<pre><code>union clusterMsgData {
+    /* PING, MEET and PONG */
+    struct {
+        /* Array of N clusterMsgDataGossip structures */
+        clusterMsgDataGossip gossip[1];
+    } ping;
+
+    /* FAIL */
+    struct {
+        clusterMsgDataFail about;
+    } fail;
+
+    /* PUBLISH */
+    struct {
+        clusterMsgDataPublish msg;
+    } publish;
+
+    /* UPDATE */
+    struct {
+        clusterMsgDataUpdate nodecfg;
+    } update;
+};
+</code></pre>
+<p>当接收到ping、meet消息时，接收节点会解析消息内容并根据自身的识 别情况做出相应处理。接收节点收到ping/meet消息时，执行解析消息头和消息体流程：</p>
+<pre><code>·解析消息头过程：消息头包含了发送节点的信息，如果发送节点是新节点且消息是meet类型，则加入到本地节点列表；如果是已知节点，则尝试更新发送节点的状态，如槽映射关系、主从角色等状态。
+</code></pre>
+<pre><code>·解析消息体过程：如果消息体的clusterMsgDataGossip数组包含的节点 是新节点，则尝试发起与新节点的meet握手流程；如果是已知节点，则根据 clusterMsgDataGossip中的flags字段判断该节点是否下线，用于故障转移。
+</code></pre>
+<pre><code>消息处理完后回复pong消息，内容同样包含消息头和消息体，发送节点 接收到回复的pong消息后，采用类似的流程解析处理消息并更新与接收节点最后通信时间，完成一次消息通信。
+</code></pre>
+<h2 id="3redis中的纪元">3.Redis中的纪元</h2>
+<p><strong>currentEpoch:</strong><br>
+这是一个集群状态相关的概念，可以当做记录集群状态变更的递增版本号。每个集群节点，都会通过 <code>server.cluster-&gt;currentEpoch</code> 记录当前的 <code>currentEpoch</code>。</p>
+<p>集群节点创建时，不管是 <code>master</code> 还是 <code>slave</code>，都置 <code>currentEpoch</code> 为 0。当前节点接收到来自其他节点的包时，如果发送者的 <code>currentEpoch</code>（消息头部会包含发送者的 <code>currentEpoch</code>）大于当前节点的<code>currentEpoch</code>，那么当前节点会更新 <code>currentEpoch</code> 为发送者的 <code>currentEpoch</code>。因此，集群中所有节点的 <code>currentEpoch</code> 最终会达成一致，相当于对集群状态的认知达成了一致。</p>
+<p><strong>currentEpoch 作用:</strong><br>
+<code>currentEpoch</code> 作用在于，当集群的状态发生改变，某个节点为了执行一些动作需要寻求其他节点的同意时，就会增加 <code>currentEpoch</code> 的值。目前 <code>currentEpoch</code> 只用于 <code>slave</code> 的故障转移流程，这就跟哨兵中的<code>sentinel.current_epoch</code> 作用是一模一样的。当 <code>slave A</code> 发现其所属的 master 下线时，就会试图发起故障转移流程。首先就是增加 <code>currentEpoch</code> 的值，这个增加后的 <code>currentEpoch</code> 是所有集群节点中最大的。然后<code>slave A</code> 向所有节点发起拉票请求，请求其他 <code>master</code> 投票给自己，使自己能成为新的 <code>master</code>。其他节点收到包后，发现发送者的 <code>currentEpoch</code> 比自己的 <code>currentEpoch</code> 大，就会更新自己的 <code>currentEpoch</code>，并在尚未投票的情况下，投票给 <code>slave A</code>，表示同意使其成为新的 <code>master</code>。</p>
+<p><strong>configEpoch:</strong><br>
+这是一个集群节点配置相关的概念，每个集群节点都有自己独一无二的 <code>configepoch</code>。所谓的节点配置，实际上是指节点所负责的槽位信息。</p>
+<p>每一个 <code>master</code> 在向其他节点发送包时，都会附带其 <code>configEpoch</code> 信息，以及一份表示它所负责的 <code>slots</code> 信息。而 <code>slave</code> 向其他节点发送包时，其包中的 <code>configEpoch</code> 和负责槽位信息，是其 <code>master</code> 的 <code>configEpoch</code> 和负责的<code>slot</code>信息。节点收到包之后，就会根据包中的 <code>configEpoch</code> 和负责的 <code>slots</code> 信息，记录到相应节点属性中。</p>
+<p><strong>configEpoch 作用:</strong><br>
+<code>configEpoch</code> 主要用于解决不同的节点的配置发生冲突的情况。举个例子就明白了：节点A 宣称负责 <code>slot 1</code>，其向外发送的包中，包含了自己的 <code>configEpoch</code> 和负责的 <code>slots</code> 信息。节点 C 收到 A 发来的包后，发现自己当前没有记录 <code>slot 1</code> 的负责节点（也就是 <code>server.cluster-&gt;slots[1]</code> 为 NULL），就会将 A 置为 <code>slot 1</code> 的负责节点（<code>server.cluster-&gt;slots[1] = A</code>），并记录节点 A 的 <code>configEpoch</code>。后来，节点 C 又收到了 B 发来的包，它也宣称负责 <code>slot 1</code>，此时，如何判断 <code>slot 1</code> 到底由谁负责？</p>
+<p>这就是 <code>configEpoch</code> 起作用的时候了，C 在 B 发来的包中，发现它的 <code>configEpoch</code>，要比 A 的大，说明 B 是更新的配置。因此，就将 <code>slot 1</code> 的负责节点设置为 B（<code>server.cluster-&gt;slots[1] = B</code>）。在 <code>slave</code> 发起选举，获得足够多的选票之后，成功当选时，也就是 <code>slave</code> 试图替代其已经下线的旧 <code>master</code>，成为新的 <code>master</code> 时，会增加它自己的 <code>configEpoch</code>，使其成为当前所有集群节点的 <code>configEpoch</code> 中的最大值。这样，该 <code>slave</code> 成为 <code>master</code> 后，就会向所有节点发送广播包，强制其他节点更新相关 <code>slots</code> 的负责节点为自己。</p>
+<h2 id="4故障发现">4.故障发现</h2>
+<h3 id="41-主观客观下线">4.1 主观/客观下线</h3>
+<blockquote>
+<p>·主观下线：某个节点认为另一个节点不可用，即下线状态，但并不是最终的故障判定，只代表一个节点的意见，可能误判。</p>
+</blockquote>
+<blockquote>
+<p>·客观下线：指标记一个节点真正的下线，集群内多个节点都认为该节点不可用。如果是主节点故障，需要为该节点进行故障转移（槽需要再分配好）。</p>
+</blockquote>
+<p>节点会定期向其他节点发送ping消息，接收节点回复pong 消息作为响应。如果在cluster-node-timeout时间内通信一直失败，则认为接收节点存在故障。<br>
+每个节点内的clusterState结构都需要保存其他节点信息，用于从自身视角判断其他节点的状态。结构关键属性如下：</p>
+<pre><code>typedef struct clusterState {
+    clusterNode *myself;  /* 自身 */
+    dict *nodes;          /* Hash table of name -&gt; clusterNode structures */
+                        /* 当前集群内所有节点的字典集合，key为节点ID，value为对应节点ClusterNode结构 */ 
+    // ...
+} clusterState;
+
+typedef struct clusterNode {
+    int flags;      /*  当前节点状态,如:主从角色，是否下线等... */
+    mstime_t ping_sent;      /*  最后一次与该节点发送ping消息的时间  */
+    mstime_t pong_received;  /*  最后一次与该节点发送ping消息的时间  */
+    // ...
+}
+</code></pre>
+<p>其中flags，用于标示该节点对应状态:</p>
+<pre><code>#define CLUSTER_NODE_MASTER 1     /* The node is a master */
+#define CLUSTER_NODE_SLAVE 2      /* The node is a slave */
+#define CLUSTER_NODE_PFAIL 4      /* Failure? Need acknowledge */
+#define CLUSTER_NODE_FAIL 8       /* The node is believed to be malfunctioning */
+#define CLUSTER_NODE_MYSELF 16    /* This node is myself */
+#define CLUSTER_NODE_HANDSHAKE 32 /* We have still to exchange the first ping */
+#define CLUSTER_NODE_NOADDR   64  /* We don't know the address of this node */
+#define CLUSTER_NODE_MEET 128     /* Send a MEET message to this node */
+#define CLUSTER_NODE_MIGRATE_TO 256 /* Master elegible for replica migration. */
+#define CLUSTER_NODE_NOFAILOVER 512 /* Slave will not try to failver. */
+</code></pre>
+<h3 id="42-客观下线">4.2 客观下线</h3>
+<pre><code>typedef struct clusterNode {
+    list *fail_reports;      /*  记录了其他节点对该节点的下线报告 */
+    // ...
+}
+</code></pre>
+<h2 id="5-故障转移">5 故障转移</h2>
+<p>……</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/resttemplatepostforentity-bao-cuo-400/">
+              <h3 class="post-title">
+                下一篇：restTemplate.postForEntity报错400
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">温故而知新</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://lehy786.github.io/atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>

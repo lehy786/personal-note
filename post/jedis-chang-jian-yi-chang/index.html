@@ -1,0 +1,607 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>jedis常见异常 | Gridea</title>
+<meta name="description" content="温故而知新">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://lehy786.github.io/favicon.ico?v=1618884189702">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://lehy786.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://lehy786.github.io">
+        <img class="avatar" src="https://lehy786.github.io/images/avatar.png?v=1618884189702" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://lehy786.github.io">
+        <h1 class="site-title">Gridea</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            博文
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">jedis常见异常</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://lehy786.github.io/tag/Q0MTRx9du/">
+                    Redis
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <h3 id="一无法从连接池获取到jedis连接">一.无法从连接池获取到Jedis连接</h3>
+<h4 id="1异常堆栈">1.异常堆栈</h4>
+<p>(1) 连接池参数blockWhenExhausted = true(默认)</p>
+<p>如果连接池没有可用Jedis连接，会等待maxWaitMillis(毫秒)，依然没有获取到可用Jedis连接，会抛出如下异常：</p>
+<pre><code class="language-java">redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool
+    …
+Caused by: java.util.NoSuchElementException: Timeout waiting for idle object
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:449)
+</code></pre>
+<p>(2) 连接池参数blockWhenExhausted = false</p>
+<p>设置如果连接池没有可用Jedis连接，立即抛出异常：</p>
+<pre><code class="language-java">redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool
+    …
+Caused by: java.util.NoSuchElementException: Pool exhausted
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:464)
+</code></pre>
+<h4 id="2异常描述">2.异常描述</h4>
+<p>上述异常是客户端没有从连接池(最大maxTotal个)拿到可用Jedis连接造成的，具体可能有如下原因：</p>
+<p>(1) 连接泄露 (<strong>较为常见</strong>)</p>
+<p>JedisPool默认的maxTotal=8，下面的代码从JedisPool中借了8次Jedis，但是没有归还，当第9次(jedisPool.getResource().ping())</p>
+<pre><code>GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
+JedisPool jedisPool = new JedisPool(poolConfig, &quot;127.0.0.1&quot;, 6379);
+//向JedisPool借用8次连接，但是没有执行归还操作。
+for (int i = 0; i &lt; 8; i++) {
+    Jedis jedis = null;
+    try {
+        jedis = jedisPool.getResource();
+        jedis.ping();
+    } catch (Exception e) {
+        logger.error(e.getMessage(), e);
+    }
+}
+jedisPool.getResource().ping();
+</code></pre>
+<p>所以推荐使用的代码规范是：</p>
+<pre><code>执行命令如下：
+Jedis jedis = null;
+try {
+    jedis = jedisPool.getResource();
+    //具体的命令
+    jedis.executeCommand()
+} catch (Exception e) {
+    //如果命令有key最好把key也在错误日志打印出来，对于集群版来说通过key可以帮助定位到具体节点。
+    logger.error(e.getMessage(), e);
+} finally {
+    //注意这里不是关闭连接，在JedisPool模式下，Jedis会被归还给资源池。
+    if (jedis != null) 
+        jedis.close();
+}
+</code></pre>
+<p>(2) 业务并发量大，maxTotal确实设置小了。</p>
+<p>举个例子：</p>
+<ul>
+<li>一次命令时间（borrow|return resource + Jedis执行命令(含网络) ）的平均耗时约为1ms，一个连接的QPS大约是1000</li>
+<li>业务期望的QPS是50000</li>
+</ul>
+<p>那么理论上需要的资源池大小是50000 / 1000 = 50个，实际maxTotal可以根据理论值进行微调。</p>
+<p>(3) Jedis连接还的太慢</p>
+<p>例如Redis发生了阻塞(例如慢查询等原因)，所有连接在超时时间范围内等待，并发量较大时，会造成连接池资源不足。</p>
+<p>(4) 其他问题</p>
+<p>例如丢包、DNS。对于这类问题的原因有几类，可以根据以下一一进行排查：</p>
+<h6 id="网络检查">网络检查</h6>
+<p>首先检查是否网络问题，可以通过telnet host 6379进行简单测试，连上之后auth 密码回车查看是否返回+OKrn,如果能够正确返回继续检查ping请求或者读写请求是否正常返回，操作多次排查网络问题影响。</p>
+<h6 id="jedispool连接数设置检查">JedisPool连接数设置检查</h6>
+<p>JedisPool使用的时候需要进行连接池的设置，用户在超过MaxTotal连接数的时候也会出现获取不到连接池的情况，这个时候可以在访问客户端上通过netstat -an | grep 6379 | grep EST | wc -l 查看链接的客户端链接数目，并且比较这个数目和JedisPool配置的MaxTotal的值，如果没有明显超过或者接近就可以排除JedisPool连接池配置的影响。</p>
+<h6 id="jedispool连接池代码检查">JedisPool连接池代码检查</h6>
+<p>对于JedisPool连接池的操作，每次getResource之后需要调用returnResource或者close进行归还，可以查看代码是否有正确使用，代码sample可以参考上面的</p>
+<h6 id="检查是否发生nf_conntrack丢包">检查是否发生nf_conntrack丢包</h6>
+<p>通过dmesg检查客户端是否有异常</p>
+<pre><code>nf_conntrack: table full, dropping packet
+</code></pre>
+<p>如果发生nf_conntract丢包可以通过修改设置sysctl -w net.netfilter.nf_conntrack_max=120000</p>
+<h6 id="检查是否time_wait问题">检查是否TIME_WAIT问题</h6>
+<p>通过ss -s 查看time wait链接是否过多<br>
+如果TIME_WAIT过多可以修改以下参数</p>
+<pre><code>sysctl -w net.ipv4.tcp_max_tw_buckets=180000
+sysctl -w net.ipv4.tcp_tw_recycle=1
+</code></pre>
+<h4 id="3解决方法">3.解决方法：</h4>
+<p>可以看到这个问题稍微复杂一些，不要被异常的表象所迷惑，简单地认为连接池不够就盲目加大maxTotal，要具体问题具体分析。</p>
+<p><strong>还有一种情况是</strong>：从池子里拿连接，由于没有空闲连接，需要重新生成一个Jedis连接，但是连接被拒绝：</p>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool
+    at redis.clients.util.Pool.getResource(Pool.java:50)
+    at redis.clients.jedis.JedisPool.getResource(JedisPool.java:99)
+    at TestAdmin.main(TestAdmin.java:14)
+Caused by: redis.clients.jedis.exceptions.JedisConnectionException: java.net.ConnectException: Connection refused
+    at redis.clients.jedis.Connection.connect(Connection.java:164)
+    at redis.clients.jedis.BinaryClient.connect(BinaryClient.java:80)
+    at redis.clients.jedis.BinaryJedis.connect(BinaryJedis.java:1676)
+    at redis.clients.jedis.JedisFactory.makeObject(JedisFactory.java:87)
+    at org.apache.commons.pool2.impl.GenericObjectPool.create(GenericObjectPool.java:861)
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:435)
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:363)
+    at redis.clients.util.Pool.getResource(Pool.java:48)
+    ... 2 more
+Caused by: java.net.ConnectException: Connection refused
+    at java.net.PlainSocketImpl.socketConnect(Native Method)
+    at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:339)
+    at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+    at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+    at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+    at java.net.Socket.connect(Socket.java:579)
+    at redis.clients.jedis.Connection.connect(Connection.java:158)
+    ... 9 more
+</code></pre>
+<p>可以从at redis.clients.jedis.Connection.connect(Connection.java:158)看到实际是一个Socket连接：</p>
+<pre><code> socket.setSoLinger(true, 0); // Control calls close () method,
+        // the underlying socket is closed
+        // immediately
+        // &lt;-@wjw_add
+
+158:  socket.connect(new InetSocketAddress(host, port), connectionTimeout);
+</code></pre>
+<p><strong>一般这种需要检查Redis的域名配置是否正确，排查该段时间网络是否正常</strong></p>
+<h3 id="二-客户端缓冲区异常">二、客户端缓冲区异常</h3>
+<h4 id="1异常堆栈-2">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: Unexpected end of stream.
+    at redis.clients.util.RedisInputStream.ensureFill(RedisInputStream.java:199)
+    at redis.clients.util.RedisInputStream.readByte(RedisInputStream.java:40)
+    at redis.clients.jedis.Protocol.process(Protocol.java:151)
+......
+</code></pre>
+<h4 id="2异常描述-2">2.异常描述：</h4>
+<p>这个异常是客户端缓冲区异常，产生这个问题可能有三个原因：</p>
+<p>(1) 常见原因：多个线程使用一个Jedis连接，正常的情况是一个线程使用一个Jedis连接，可以使用JedisPool管理Jedis连接，实现线程安全，防止出现这种情况，例如下面代码中两个线程用了一个Jedis连接：</p>
+<pre><code>new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.get(&quot;hello&quot;);
+        }
+    }
+}).start();
+
+new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.hget(&quot;haskey&quot;, &quot;f&quot;);
+        }
+    }
+}).start();
+</code></pre>
+<p>(2) 客户端缓冲区满了</p>
+<p>Redis有三种客户端缓冲区：</p>
+<ul>
+<li>普通客户端缓冲区(normal)：用于接受普通的命令，例如get、set、mset、hgetall、zrange等</li>
+<li>slave客户端缓冲区(slave)：用于同步master节点的写命令，完成复制。</li>
+<li>发布订阅缓冲区(pubsub)：pubsub不是普通的命令，因此有单独的缓冲区。</li>
+</ul>
+<p>Redis的客户端缓冲区配置具体格式是：</p>
+<pre><code>client-output-buffer-limit &lt;class&gt; &lt;hard limit&gt; &lt;soft limit&gt; &lt;soft seconds&gt;
+</code></pre>
+<p>(a) class: 客户端类型：(a) normal、(b) slave、(c) pubsub</p>
+<p>(b) hard limit: 如果客户端使用的输出缓冲区大于hard limit，客户端会被立即关闭。</p>
+<p>(c) soft limit和soft seconds: 如果客户端使用的输出缓冲区超过了soft limit并且持续了soft limit秒，客户端会被立即关闭</p>
+<p>例如下面是一份Redis缓冲区的配置，所以当条件满足时，客户端连接会被关闭，就会出现Unexpected end of stream。</p>
+<pre><code>redis&gt; config get client-output-buffer-limit
+1) &quot;client-output-buffer-limit&quot;
+2) &quot;normal 524288000 0 0 slave 2147483648 536870912 480 pubsub 33554432 8388608 60&quot;
+</code></pre>
+<p>(3) 长时间闲置连接被服务端主动断开，可以查询timeout配置的设置以及自身连接池配置是否需要做空闲检测。</p>
+<h4 id="3解决方法-2">3.解决方法：</h4>
+<p>排查自身代码是否使用JedisPool管理Jedis连接，是否存在并发操作Jedis的情况。</p>
+<h3 id="三-客户端连接数达到最大值">三、客户端连接数达到最大值</h3>
+<h4 id="1异常堆栈-3">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: ERR max number of clients reached
+</code></pre>
+<h4 id="2异常描述-3">2.异常描述：</h4>
+<p>如果客户端连接数超过了Redis实例配置的最大maxclients</p>
+<h4 id="3解决方法-3">3.解决方法：</h4>
+<p>调大最大连接数，并找到连接数暴涨的原因(因为上述调整只是临时调整)，</p>
+<h3 id="四-客户端读写超时">四、客户端读写超时</h3>
+<h4 id="1异常堆栈-4">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: java.net.SocketTimeoutException: Read timed out
+</code></pre>
+<h4 id="2异常描述-4">2.异常描述：</h4>
+<p>该问题原因可能有如下几种：<br>
+(1) 读写超时设置的过短。<br>
+(2) 有慢查询或者Redis发生阻塞。<br>
+(3) 网络不稳定。</p>
+<h4 id="3解决方法-4">3.解决方法：</h4>
+<p>排查上述异常是否发生。排查网络环境是否跨机房、或者带宽压力过大。</p>
+<h4 id="4处理人">4.处理人：</h4>
+<p>工单。</p>
+<h3 id="五-密码相关的异常">五、密码相关的异常</h3>
+<h4 id="1异常堆栈-5">1.异常堆栈</h4>
+<p>Redis设置了密码，客户端请求没传密码：</p>
+<pre><code>Exception in thread &quot;main&quot; redis.clients.jedis.exceptions.JedisDataException: NOAUTH Authentication required.
+     at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+     at redis.clients.jedis.Protocol.process(Protocol.java:161)
+     at redis.clients.jedis.Protocol.read(Protocol.java:215)
+</code></pre>
+<p>Redis没有设置密码，客户端传了密码：</p>
+<pre><code>Exception in thread &quot;main&quot; redis.clients.jedis.exceptions.JedisDataException: ERR Client sent AUTH, but no password is set
+     at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+     at redis.clients.jedis.Protocol.process(Protocol.java:161)
+     at redis.clients.jedis.Protocol.read(Protocol.java:215)
+</code></pre>
+<p>客户端传了错误的密码：</p>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: ERR invalid password
+    at redis.clients.jedis.Protocol.processError(Protocol.java:117)
+    at redis.clients.jedis.Protocol.process(Protocol.java:151)
+    at redis.clients.jedis.Protocol.read(Protocol.java:205)
+</code></pre>
+<h4 id="2解决方法弄清楚到底有没有密码密码是否正确">2.解决方法：弄清楚到底有没有密码，密码是否正确。</h4>
+<h3 id="六-事务异常">六、事务异常</h3>
+<h4 id="1异常堆栈-6">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: EXECABORT Transaction discarded because of previous errors
+</code></pre>
+<h4 id="2异常描述-5">2.异常描述：</h4>
+<p>这个是Redis的事务异常：事务中包含了错误的命令，例如如下sett是个不存在的命令。</p>
+<pre><code>127.0.0.1:6379&gt; multi
+OK
+127.0.0.1:6379&gt; sett key world
+(error) ERR unknown command 'sett'
+127.0.0.1:6379&gt; incr counter
+QUEUED
+127.0.0.1:6379&gt; exec
+(error) EXECABORT Transaction discarded because of previous errors.
+</code></pre>
+<h4 id="3解决方法-5">3.解决方法：</h4>
+<p>代码错误。</p>
+<h3 id="七-类转换错误">七、类转换错误</h3>
+<h4 id="1异常堆栈-7">1.异常堆栈</h4>
+<pre><code>java.lang.ClassCastException: java.lang.Long cannot be cast to java.util.List
+         at redis.clients.jedis.Connection.getBinaryMultiBulkReply(Connection.java:199)
+         at redis.clients.jedis.Jedis.hgetAll(Jedis.java:851)
+         at redis.clients.jedis.ShardedJedis.hgetAll(ShardedJedis.java:198)   
+java.lang.ClassCastException: java.util.ArrayList cannot be cast to [B
+         at redis.clients.jedis.Connection.getBinaryBulkReply(Connection.java:182)
+         at redis.clients.jedis.Connection.getBulkReply(Connection.java:171)
+         at redis.clients.jedis.Jedis.rpop(Jedis.java:1109)
+         at redis.clients.jedis.ShardedJedis.rpop(ShardedJedis.java:258)
+.......
+</code></pre>
+<h4 id="2异常描述-6">2.异常描述：</h4>
+<p>Jedis正确的使用方法是：一个线程操作一个Jedis，通常来讲产生该错误是由于没有使用JedisPool造成的，例如如下代码在两个线程并发使用了一个Jedis。(get、hgetAll返回类型也是不一样的)</p>
+<pre><code>new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.set(&quot;hello&quot;, &quot;world&quot;);
+            jedis.get(&quot;hello&quot;);
+        }
+    }
+}).start();
+
+new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.hset(&quot;hashkey&quot;, &quot;f&quot;, &quot;v&quot;);
+            jedis.hgetAll(&quot;hashkey&quot;);
+        }
+    }
+}).start();
+</code></pre>
+<h4 id="3解决方法-6">3.解决方法：</h4>
+<p>排查自身代码是否存在上述问题</p>
+<h3 id="八-命令使用错误">八、命令使用错误</h3>
+<h4 id="1异常堆栈-8">1.异常堆栈</h4>
+<pre><code>Exception in thread &quot;main&quot; redis.clients.jedis.exceptions.JedisDataException: WRONGTYPE Operation against a key holding the wrong kind of value
+    at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+    at redis.clients.jedis.Protocol.process(Protocol.java:161)
+    at redis.clients.jedis.Protocol.read(Protocol.java:215)
+.....
+</code></pre>
+<h4 id="2异常描述-7">2.异常描述：</h4>
+<p>例如key=&quot;hello&quot;是字符串类型的键，而hgetAll是哈希类型的键，所以出现了错误。</p>
+<pre><code>jedis.set(&quot;hello&quot;,&quot;world&quot;);
+jedis.hgetAll(&quot;hello&quot;);
+</code></pre>
+<h4 id="3解决方法-7">3.解决方法：</h4>
+<p>修改自身代码错误。</p>
+<h3 id="九-redis使用的内存超过maxmemory配置">九、Redis使用的内存超过maxmemory配置</h3>
+<h4 id="1异常堆栈-9">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: OOM command not allowed when used memory &gt; 'maxmemory'.
+</code></pre>
+<h4 id="2异常描述-8">2.异常描述：</h4>
+<p>Redis节点(如果是集群，则是其中一个节点)使用大于该实例的内存规格(maxmemory配置)。</p>
+<h4 id="3解决方法-8">3.解决方法：</h4>
+<p>原因可能有以下几个：</p>
+<ul>
+<li>业务数据正常增加</li>
+<li>客户端缓冲区异常：例如使用了monitor、pub/sub使用不当等等</li>
+<li>纯缓存使用场景，但是maxmemory-policy配置有误(例如没有过期键的业务配置volatile-lru)</li>
+</ul>
+<p>调整maxmeory配置，但需要找到内存增大的原因。</p>
+<h3 id="十-redis正在加载持久化文件">十、Redis正在加载持久化文件</h3>
+<h4 id="1异常堆栈-10">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: LOADING Redis is loading the dataset in memory
+</code></pre>
+<h4 id="2异常描述-9">2.异常描述：</h4>
+<p>Jedis调用Redis时，如果Redis正在加载持久化文件，无法进行正常的读写。</p>
+<h4 id="3解决方法-9">3.解决方法：</h4>
+<p>检查服务器进程是否异常挂起，检查dump.rdb文件是否能正常读。</p>
+<h3 id="十一-lua脚本超时">十一、Lua脚本超时</h3>
+<h4 id="1异常堆栈-11">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: BUSY Redis is busy running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE.
+</code></pre>
+<h4 id="2异常描述-10">2.异常描述：</h4>
+<p>如果Redis当前正在执行Lua脚本，并且超过了lua-time-limit，此时Jedis调用Redis时，会收到该异常</p>
+<h4 id="3解决方法-10">3.解决方法：</h4>
+<p>按照异常提示：You can only call SCRIPT KILL or SHUTDOWN NOSAVE. (使用script kill:kill掉Lua脚本)</p>
+<h3 id="十二-连接超时">十二、 连接超时</h3>
+<h4 id="1异常堆栈-12">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: java.net.SocketTimeoutException: connect timed out
+</code></pre>
+<h4 id="2异常描述-11">2.异常描述：</h4>
+<p>可能产生的原因：</p>
+<ul>
+<li>连接超时设置的过短。</li>
+<li>tcp-backlog满，造成新的连接失败。</li>
+<li>客户端与服务端网络不正常。</li>
+</ul>
+<h4 id="3解决方法-11">3.解决方法：</h4>
+<p>排查网络环境和timeout设置。</p>
+<h4 id="4处理人-2">4.处理人：</h4>
+<p>工单。</p>
+<h3 id="十三-lua脚本写超时">十三、 Lua脚本写超时</h3>
+<h4 id="1异常堆栈-13">1.异常堆栈</h4>
+<pre><code>(error) UNKILLABLE Sorry the script already executed write commands against the dataset. You can either wait the script termination or kill the server in a hard way using the SHUTDOWN NOSAVE command.
+</code></pre>
+<h4 id="2异常描述-12">2.异常描述：</h4>
+<p>如果Redis当前正在执行Lua脚本，并且超过了lua-time-limit，<strong>并且已经执行过写命令</strong>，此时Jedis调用Redis时，会收到上面的异常</p>
+<h4 id="3解决方法-12">3.解决方法：</h4>
+<p>重启或者切换Redis节点。</p>
+<h3 id="十四-类加载错误">十四、类加载错误</h3>
+<h4 id="1异常堆栈-14">1.异常堆栈</h4>
+<p>例如找不到类和方法：</p>
+<pre><code>Exception in thread &quot;commons-pool-EvictionTimer&quot; java.lang.NoClassDefFoundError: redis/clients/util/IOUtils
+    at redis.clients.jedis.Connection.disconnect(Connection.java:226)
+    at redis.clients.jedis.BinaryClient.disconnect(BinaryClient.java:941)
+    at redis.clients.jedis.BinaryJedis.disconnect(BinaryJedis.java:1771)
+    at redis.clients.jedis.JedisFactory.destroyObject(JedisFactory.java:91)
+    at         org.apache.commons.pool2.impl.GenericObjectPool.destroy(GenericObjectPool.java:897)
+    at org.apache.commons.pool2.impl.GenericObjectPool.evict(GenericObjectPool.java:793)
+    at org.apache.commons.pool2.impl.BaseGenericObjectPool$Evictor.run(BaseGenericObjectPool.java:1036)
+    at java.util.TimerThread.mainLoop(Timer.java:555)
+    at java.util.TimerThread.run(Timer.java:505)
+Caused by: java.lang.ClassNotFoundException: redis.clients.util.IOUtils
+......
+</code></pre>
+<h4 id="2异常描述-13">2.异常描述：</h4>
+<p>运行时，Jedis执行命令，抛出异常：某个类找不到。一般此类问题都是由于加载多个jedis版本(例如jedis 2.9.0和jedis 2.6)，在编译期代码未出现问题，但类加载器在运行时加载了低版本的Jedis，造成运行时找不到类。</p>
+<h4 id="3解决方法-13">3.解决方法：</h4>
+<p>通常此类问题，可以将重复的jedis排除掉，例如利用maven的依赖树，把无用的依赖去掉或者exclusion掉。</p>
+<h3 id="十五-服务端命令不支持">十五、服务端命令不支持</h3>
+<h4 id="1异常堆栈-15">1.异常堆栈</h4>
+<p>例如客户端执行了geoadd命令，但是服务端返回不支持此命令</p>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: ERR unknown command 'GEOADD'
+</code></pre>
+<h4 id="2异常描述-14">2.异常描述：</h4>
+<p>该命令不能被Redis端识别，有可能有两个原因：</p>
+<ul>
+<li>使用的Redis版本不支持命令。</li>
+<li>命令本身是错误的(不过对于Jedis来说还好，不支持直接组装命令，每个API都有固定的函数)。</li>
+</ul>
+<h4 id="3解决方法-14">3.解决方法：</h4>
+<p>确认是否有Redis版本支持该命令。</p>
+<h3 id="十六-pipeline错误使用">十六、pipeline错误使用</h3>
+<h4 id="1异常堆栈-16">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: Please close pipeline or multi block before calling this method.
+</code></pre>
+<h4 id="2异常描述-15">2.异常描述：</h4>
+<p>在pipeline.sync()执行之前，通过response.get()获取值，在pipeline.sync()执行前，命令没有执行(可以通过monitor做验证)，下面代码就会引起上述异常</p>
+<pre><code>Jedis jedis = new Jedis(&quot;127.0.0.1&quot;, 6379);
+Pipeline pipeline = jedis.pipelined();
+pipeline.set(&quot;hello&quot;, &quot;world&quot;); 
+pipeline.set(&quot;java&quot;, &quot;jedis&quot;);
+    
+Response&lt;String&gt; pipeString = pipeline.get(&quot;java&quot;);
+//这个get必须在sync之后，如果是批量获取值建议直接用List&lt;Object&gt; objectList = pipeline.syncAndReturnAll();
+System.out.println(pipeString.get());
+//命令此时真正执行
+pipeline.sync();
+</code></pre>
+<p>Jedis中Reponse中get()方法，有个判断:如果set=false就会报错，而response中的set初始化为false.</p>
+<pre><code>public T get() {
+  // if response has dependency response and dependency is not built,
+  // build it first and no more!!
+  if (dependency != null &amp;&amp; dependency.set &amp;&amp; !dependency.built) {
+    dependency.build();
+  }
+  if (!set) {
+    throw new JedisDataException(
+        &quot;Please close pipeline or multi block before calling this method.&quot;);
+  }
+  if (!built) {
+    build();
+  }
+  if (exception != null) {
+    throw exception;
+  }
+  return response;
+}
+</code></pre>
+<p>pipeline.sync()会每个结果设置set=true。</p>
+<pre><code>public void sync() {
+  if (getPipelinedResponseLength() &gt; 0) {
+    List&lt;Object&gt; unformatted = client.getAll();
+    for (Object o : unformatted) {
+      generateResponse(o);
+    }
+  }
+}
+</code></pre>
+<p>其中generateResponse(o):</p>
+<pre><code>protected Response&lt;?&gt; generateResponse(Object data) {
+  Response&lt;?&gt; response = pipelinedResponses.poll();
+  if (response != null) {
+    response.set(data);
+  }
+  return response;
+}
+</code></pre>
+<p>其中response.set(data);</p>
+<pre><code>public void set(Object data) {
+    this.data = data;
+    set = true;
+}
+</code></pre>
+<h4 id="3解决方法-15">3.解决方法：</h4>
+<p>实际上对于批量结果的解析，建议使用pipeline.syncAndReturnAll()来实现，下面操作模拟了批量hgetAll</p>
+<pre><code>/**
+* pipeline模拟批量hgetAll
+* @param keyList
+* @return
+*/
+public Map&lt;String, Map&lt;String, String&gt;&gt; mHgetAll(List&lt;String&gt; keyList) {
+// 1.生成pipeline对象
+Pipeline pipeline = jedis.pipelined();
+// 2.pipeline执行命令，注意此时命令并未真正执行
+for (String key : keyList) {
+  pipeline.hgetAll(key);
+}
+// 3.执行命令 syncAndReturnAll()返回结果
+List&lt;Object&gt; objectList = pipeline.syncAndReturnAll();
+if (objectList == null || objectList.isEmpty()) {
+  return Collections.emptyMap();
+}
+    
+// 4.解析结果
+Map&lt;String,Map&lt;String, String&gt;&gt; resultMap = new HashMap&lt;String, Map&lt;String,String&gt;&gt;();
+for (int i = 0; i &lt; objectList.size(); i++) {
+  Object object = objectList.get(i);
+  Map&lt;String, String&gt; map = (Map&lt;String, String&gt;) object;
+  String key = keyList.get(i);
+  resultMap.put(key, map);
+}
+return resultMap;
+}
+</code></pre>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/jedis-ji-qun-maxtotal-deng-pei-zhi/">
+              <h3 class="post-title">
+                下一篇：jedis集群maxTotal等配置
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">温故而知新</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://lehy786.github.io/atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>

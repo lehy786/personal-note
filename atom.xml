@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://lehy786.github.io</id>
     <title>Gridea</title>
-    <updated>2021-04-20T01:10:30.556Z</updated>
+    <updated>2021-04-20T02:03:25.130Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://lehy786.github.io"/>
     <link rel="self" href="https://lehy786.github.io/atom.xml"/>
@@ -11,60 +11,1262 @@
     <icon>https://lehy786.github.io/favicon.ico</icon>
     <rights>All rights reserved 2021, Gridea</rights>
     <entry>
-        <title type="html"><![CDATA[ES 多条件过滤查询]]></title>
-        <id>https://lehy786.github.io/post/es-duo-tiao-jian-guo-lu-cha-xun/</id>
-        <link href="https://lehy786.github.io/post/es-duo-tiao-jian-guo-lu-cha-xun/">
+        <title type="html"><![CDATA[jedis-2.9-after-issue]]></title>
+        <id>https://lehy786.github.io/post/jedis-29-after-issue/</id>
+        <link href="https://lehy786.github.io/post/jedis-29-after-issue/">
         </link>
-        <updated>2021-04-20T01:07:16.000Z</updated>
-        <content type="html"><![CDATA[<pre><code>// Java ES 多条件过滤查询条件
-BoolQueryBuilder queryTotal = QueryBuilders.boolQuery();
-if(StringUtils.isNotBlank(params.getRemarkFlag())){
-                if(&quot;1&quot;.equals(params.getRemarkFlag())){
-                    queryTotal.filter(QueryBuilders.existsQuery(&quot;remarks&quot;));
-                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;));
-                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,0));
-                }else if(&quot;2&quot;.equals(params.getRemarkFlag())){
-                    queryTotal.must(QueryBuilders.boolQuery()
-                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,0))
-                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;))
-                            .should(QueryBuilders.boolQuery()
-                                    .mustNot(QueryBuilders.existsQuery(&quot;remarks&quot;))));
-                }
-}
+        <updated>2021-04-20T02:01:55.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="jedis-290-forward">Jedis 2.9.0 forward</h1>
+<h4 id="writing-to-read-only-slave-fails-silently-inside-of-multi-block-1473-290">· Writing to read-only slave fails silently inside of MULTI block #1473  <code>2.9.0</code></h4>
+<p>以事务方式写入只读的slave，没有返回期望的报错信息，虽然确实写入失败。</p>
+<pre><code>Jedis j = new Jedis(&quot;read-only-slave&quot;);
+Transaction t = j.multi();
+t.set(&quot;test&quot;, &quot;test&quot;);
+List&lt;Object&gt; results = t.exec();
+</code></pre>
+<h4 id="if-uri-contains-dbindex-timeout-configuration-doesnt-work-1824-290">· if uri contains dbIndex, timeout configuration doesn't work #1824  <code>2.9.0</code></h4>
+<p>当连接redis的uri包含库索引时，配置的超时选项会失效，生效的为默认配置。</p>
+<h4 id="bug-report-the-command-jedisblpop-may-block-the-thread-forever-2217-330">· [BUG REPORT] The Command Jedis#blpop may block the thread forever. #2217  <code>3.3.0</code></h4>
+<ol>
+<li>Use<code>redis.clients.jedis.Jedis#blpop(int, java.lang.String)</code> to pull value in the redis list.</li>
+<li>In the method <code>redis.clients.jedis.Connection#sendCommand(redis.clients.jedis.commands.ProtocolCommand, byte[]...)</code>, we close the connection before the method <code>redis.clients.jedis.Protocol#sendCommand()</code> is executed.</li>
+<li>Push value to the redis list, but <code>redis.clients.jedis.Jedis#blpop(int, java.lang.String)</code> cannot pull the value, but block forever.</li>
+</ol>
+<h4 id="redis-streams-implementations-will-indefinitely-block-if-redis-server-doesnt-send-a-response-2219-330">· Redis streams implementations will indefinitely block if Redis server doesn't send a response #2219  <code>3.3.0</code></h4>
+<p>如题。</p>
+<h4 id="use-unwatch-between-multi-and-exec-and-throw-nullpointexception-when-executing-exec-1614290">· Use unwatch between multi and exec, and throw NullPointException when executing Exec #1614<code>2.9.0</code></h4>
+<pre><code>    jedis.watch(&quot;key&quot;);
+    Transaction transaction = jedis.multi();
+    jedis.unwatch();
+    transaction.set(&quot;key&quot;,&quot;value&quot;);
+    transaction.exec();
+</code></pre>
+<h4 id="redis-cluster-pexpireat-error-1629-290">· redis cluster pexpireAt error #1629 <code>2.9.0</code></h4>
+<p>BinaryJedisCluster.java中的pexpireAt()方法，实际执行应该调用Jedis中的pexpireAt()，2.9.0中错误地调用了Jedis中的pexpire()，导致key过期时间会很长。</p>
+<h4 id="bitop-not-unexpected-behavior-1635-290">· BITOP NOT unexpected behavior #1635 <code>2.9.0</code></h4>
+<p>下面的代码能执行成功：</p>
+<pre><code>new Jedis().bitop(BitOP.NOT, &quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;);
+</code></pre>
+<p>但实际上直接在服务器执行命令，返回：</p>
+<pre><code>ERR ERR BITOP NOT must be called with a single source key.
+</code></pre>
+<p>正常来说，此处应该抛错。</p>
+<h4 id="jedis-causes-outofmemoryexception-after-sockettimeoutexception-1747-290">· Jedis causes OutOfMemoryException after SocketTimeoutException #1747  <code>2.9.0</code></h4>
+<p>因超时时间设置过短，导致原本正常的连接读取只进行了一部分，而后因SocketTimeoutException断开。这种正常连接意外断开导致的问题是：</p>
+<p>因为jedis连接在确保流读取的完整时会分配一个数组来避免意外地读取到一个*字符，所以星号字符后可能会跟随一个很大的数/负数（因为完整的数被截断了或者加上了下一个字节的内容），导致这个分配的数组造成OOM。（RESP协议中，星号后面跟命令的长度。）</p>
+<h4 id="nxxx-parameter-doesnt-seem-to-be-optional-in-set-method-1800">· NXXX parameter doesn't seem to be optional in set() method #1800</h4>
+<p>使用<code>jedis.set(key, value, nxxx, expx, ttl);</code>，当nxxx选项为空时：</p>
+<pre><code>nxxx = null
+Exception
+! redis.clients.jedis.exceptions.JedisDataException: value sent to redis cannot be null
+! at redis.clients.util.SafeEncoder.encode(SafeEncoder.java:28)
+! at redis.clients.jedis.Client.set(Client.java:52)
+! at redis.clients.jedis.Jedis.set(Jedis.java:138)
 
+nxxx = &quot;&quot;
+Exception
+! redis.clients.jedis.exceptions.JedisDataException: ERR syntax error
+! at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+! at redis.clients.jedis.Protocol.process(Protocol.java:161)
+! at redis.clients.jedis.Protocol.read(Protocol.java:215)
+! at redis.clients.jedis.Connection.readProtocolWithCheckingBroken(Connection.java:340)
+! at redis.clients.jedis.Connection.getStatusCodeReply(Connection.java:239)
+! at redis.clients.jedis.Jedis.set(Jedis.java:139)
+</code></pre>
+<h4 id="jedisclusterinfocache-renewclusterslots-is-not-thread-safe-1854-290">· JedisClusterInfoCache renewClusterSlots() is not thread-safe #1854 <code>2.9.0</code></h4>
+<p>JedisClusterInfoCache中的renewClusterSlots()方法是非线程安全的，没有双重锁检验。</p>
+<h4 id="race-condition-in-jedissentinelpoolinitpool-causes-jedisconnectionexception-on-getresource-1910-300">· Race condition in JedisSentinelPool.initPool() causes JedisConnectionException on getResource() #1910 <code>3.0.0</code></h4>
+<p>启动时多个线程同时调用<code>JedisSentinelPool.initPool()</code> ，导致<code>getResource()</code>调用失败报错。多线程问题，<code>MasterListener</code>和``JedisSentinelPool<code>都会调用</code>initPool()`。</p>
+<h4 id="error-on-streams-with-transactions-1989-310-m1">· Error on Streams with Transactions #1989 <code>3.1.0-m1</code></h4>
+<p>在事务中执行stream命令报错。</p>
+<pre><code>执行：
+Transaction t = jedis.multi();
+t.xadd(streamKey, StreamEntryID.NEW_ENTRY, Map.of(&quot;foo&quot;, &quot;bar&quot;));
+t.xadd(streamKey, StreamEntryID.NEW_ENTRY, Map.of(&quot;foo&quot;, &quot;bar&quot;));
+Response&lt;List&lt;StreamEntry&gt;&gt; results = t.xrange(streamKey, null, null, 2);
+t.exec();
+
+错误：
+java.lang.ClassCastException:` class [B cannot be cast to class java.lang.String ([B and        java.lang.String are in module java.base of loader 'bootstrap')
+at redis.clients.jedis.BuilderFactory$21.build(BuilderFactory.java:484)
+at redis.clients.jedis.BuilderFactory$21.build(BuilderFactory.java:477)
+at redis.clients.jedis.Response.build(Response.java:61)
+at redis.clients.jedis.Response.get(Response.java:37)
+at redis.clients.jedis.Transaction.exec(Transaction.java:53)
+</code></pre>
+<h4 id="public-string-xgroupdelconsumerfinal-string-key-final-string-groupname-final-string-consumername-has-bug-2143-330">· public String xgroupDelConsumer(final String key, final String groupname, final String consumerName) has bug? #2143 <code>3.3.0</code></h4>
+<pre><code>执行：
+jedis.xgroupDelConsumer(&quot;mykey1&quot;, &quot;mygroup1&quot;, &quot;myconsumer1&quot;);
+报错：
+java.lang.ClassCastException: java.lang.Long cannot be cast to [B
+</code></pre>
+<h4 id="resouce-cannot-be-released-2160-2100">· resouce cannot be released #2160 <code>2.10.0</code></h4>
+<p>当dateSource被reset的时候，此时返还的connection可能已经分配给其他线程，导致最终报错：</p>
+<pre><code>redis.clients.jedis.exceptions.JedisExhaustedPoolException: Could not get a resource since the pool is exhausted
+</code></pre>
+<p>[Jedis.class]未修复之前：</p>
+<pre><code>  public void close() {
+    if (dataSource != null) {
+      if (client.isBroken()) {
+        this.dataSource.returnBrokenResource(this);
+      } else {
+        this.dataSource.returnResource(this);
+      }
+      this.dataSource = null;
+    } else {
+      super.close();
+    }
+    // ...
+  }
+</code></pre>
+<p>修复后：</p>
+<pre><code>  public void close() {
+    if (dataSource != null) {
+      JedisPoolAbstract pool = this.dataSource;
+      this.dataSource = null;
+      if (client.isBroken()) {
+        pool.returnBrokenResource(this);
+      } else {
+        pool.returnResource(this);
+      }
+    } else {
+      super.close();
+    }
+    // ...
+  }
 </code></pre>
 ]]></content>
     </entry>
     <entry>
-        <title type="html"><![CDATA[Hello Gridea]]></title>
-        <id>https://lehy786.github.io/post/hello-gridea/</id>
-        <link href="https://lehy786.github.io/post/hello-gridea/">
+        <title type="html"><![CDATA[jedis常见异常]]></title>
+        <id>https://lehy786.github.io/post/jedis-chang-jian-yi-chang/</id>
+        <link href="https://lehy786.github.io/post/jedis-chang-jian-yi-chang/">
         </link>
-        <updated>2018-12-11T16:00:00.000Z</updated>
-        <summary type="html"><![CDATA[<p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
-✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
-]]></summary>
-        <content type="html"><![CDATA[<p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
-✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
-<!-- more -->
-<p><a href="https://github.com/getgridea/gridea">Github</a><br>
-<a href="https://gridea.dev/">Gridea 主页</a><br>
-<a href="http://fehey.com/">示例网站</a></p>
-<h2 id="特性">特性👇</h2>
-<p>📝  你可以使用最酷的 <strong>Markdown</strong> 语法，进行快速创作</p>
-<p>🌉  你可以给文章配上精美的封面图和在文章任意位置插入图片</p>
-<p>🏷️  你可以对文章进行标签分组</p>
-<p>📋  你可以自定义菜单，甚至可以创建外部链接菜单</p>
-<p>💻  你可以在 <strong>Windows</strong>，<strong>MacOS</strong> 或 <strong>Linux</strong> 设备上使用此客户端</p>
-<p>🌎  你可以使用 <strong>𝖦𝗂𝗍𝗁𝗎𝖻 𝖯𝖺𝗀𝖾𝗌</strong> 或 <strong>Coding Pages</strong> 向世界展示，未来将支持更多平台</p>
-<p>💬  你可以进行简单的配置，接入 <a href="https://github.com/gitalk/gitalk">Gitalk</a> 或 <a href="https://github.com/SukkaW/DisqusJS">DisqusJS</a> 评论系统</p>
-<p>🇬🇧  你可以使用<strong>中文简体</strong>或<strong>英语</strong></p>
-<p>🌁  你可以任意使用应用内默认主题或任意第三方主题，强大的主题自定义能力</p>
-<p>🖥  你可以自定义源文件夹，利用 OneDrive、百度网盘、iCloud、Dropbox 等进行多设备同步</p>
-<p>🌱 当然 <strong>Gridea</strong> 还很年轻，有很多不足，但请相信，它会不停向前 🏃</p>
-<p>未来，它一定会成为你离不开的伙伴</p>
-<p>尽情发挥你的才华吧！</p>
-<p>😘 Enjoy~</p>
+        <updated>2021-04-20T02:01:34.000Z</updated>
+        <content type="html"><![CDATA[<h3 id="一无法从连接池获取到jedis连接">一.无法从连接池获取到Jedis连接</h3>
+<h4 id="1异常堆栈">1.异常堆栈</h4>
+<p>(1) 连接池参数blockWhenExhausted = true(默认)</p>
+<p>如果连接池没有可用Jedis连接，会等待maxWaitMillis(毫秒)，依然没有获取到可用Jedis连接，会抛出如下异常：</p>
+<pre><code class="language-java">redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool
+    …
+Caused by: java.util.NoSuchElementException: Timeout waiting for idle object
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:449)
+</code></pre>
+<p>(2) 连接池参数blockWhenExhausted = false</p>
+<p>设置如果连接池没有可用Jedis连接，立即抛出异常：</p>
+<pre><code class="language-java">redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool
+    …
+Caused by: java.util.NoSuchElementException: Pool exhausted
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:464)
+</code></pre>
+<h4 id="2异常描述">2.异常描述</h4>
+<p>上述异常是客户端没有从连接池(最大maxTotal个)拿到可用Jedis连接造成的，具体可能有如下原因：</p>
+<p>(1) 连接泄露 (<strong>较为常见</strong>)</p>
+<p>JedisPool默认的maxTotal=8，下面的代码从JedisPool中借了8次Jedis，但是没有归还，当第9次(jedisPool.getResource().ping())</p>
+<pre><code>GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
+JedisPool jedisPool = new JedisPool(poolConfig, &quot;127.0.0.1&quot;, 6379);
+//向JedisPool借用8次连接，但是没有执行归还操作。
+for (int i = 0; i &lt; 8; i++) {
+    Jedis jedis = null;
+    try {
+        jedis = jedisPool.getResource();
+        jedis.ping();
+    } catch (Exception e) {
+        logger.error(e.getMessage(), e);
+    }
+}
+jedisPool.getResource().ping();
+</code></pre>
+<p>所以推荐使用的代码规范是：</p>
+<pre><code>执行命令如下：
+Jedis jedis = null;
+try {
+    jedis = jedisPool.getResource();
+    //具体的命令
+    jedis.executeCommand()
+} catch (Exception e) {
+    //如果命令有key最好把key也在错误日志打印出来，对于集群版来说通过key可以帮助定位到具体节点。
+    logger.error(e.getMessage(), e);
+} finally {
+    //注意这里不是关闭连接，在JedisPool模式下，Jedis会被归还给资源池。
+    if (jedis != null) 
+        jedis.close();
+}
+</code></pre>
+<p>(2) 业务并发量大，maxTotal确实设置小了。</p>
+<p>举个例子：</p>
+<ul>
+<li>一次命令时间（borrow|return resource + Jedis执行命令(含网络) ）的平均耗时约为1ms，一个连接的QPS大约是1000</li>
+<li>业务期望的QPS是50000</li>
+</ul>
+<p>那么理论上需要的资源池大小是50000 / 1000 = 50个，实际maxTotal可以根据理论值进行微调。</p>
+<p>(3) Jedis连接还的太慢</p>
+<p>例如Redis发生了阻塞(例如慢查询等原因)，所有连接在超时时间范围内等待，并发量较大时，会造成连接池资源不足。</p>
+<p>(4) 其他问题</p>
+<p>例如丢包、DNS。对于这类问题的原因有几类，可以根据以下一一进行排查：</p>
+<h6 id="网络检查">网络检查</h6>
+<p>首先检查是否网络问题，可以通过telnet host 6379进行简单测试，连上之后auth 密码回车查看是否返回+OKrn,如果能够正确返回继续检查ping请求或者读写请求是否正常返回，操作多次排查网络问题影响。</p>
+<h6 id="jedispool连接数设置检查">JedisPool连接数设置检查</h6>
+<p>JedisPool使用的时候需要进行连接池的设置，用户在超过MaxTotal连接数的时候也会出现获取不到连接池的情况，这个时候可以在访问客户端上通过netstat -an | grep 6379 | grep EST | wc -l 查看链接的客户端链接数目，并且比较这个数目和JedisPool配置的MaxTotal的值，如果没有明显超过或者接近就可以排除JedisPool连接池配置的影响。</p>
+<h6 id="jedispool连接池代码检查">JedisPool连接池代码检查</h6>
+<p>对于JedisPool连接池的操作，每次getResource之后需要调用returnResource或者close进行归还，可以查看代码是否有正确使用，代码sample可以参考上面的</p>
+<h6 id="检查是否发生nf_conntrack丢包">检查是否发生nf_conntrack丢包</h6>
+<p>通过dmesg检查客户端是否有异常</p>
+<pre><code>nf_conntrack: table full, dropping packet
+</code></pre>
+<p>如果发生nf_conntract丢包可以通过修改设置sysctl -w net.netfilter.nf_conntrack_max=120000</p>
+<h6 id="检查是否time_wait问题">检查是否TIME_WAIT问题</h6>
+<p>通过ss -s 查看time wait链接是否过多<br>
+如果TIME_WAIT过多可以修改以下参数</p>
+<pre><code>sysctl -w net.ipv4.tcp_max_tw_buckets=180000
+sysctl -w net.ipv4.tcp_tw_recycle=1
+</code></pre>
+<h4 id="3解决方法">3.解决方法：</h4>
+<p>可以看到这个问题稍微复杂一些，不要被异常的表象所迷惑，简单地认为连接池不够就盲目加大maxTotal，要具体问题具体分析。</p>
+<p><strong>还有一种情况是</strong>：从池子里拿连接，由于没有空闲连接，需要重新生成一个Jedis连接，但是连接被拒绝：</p>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool
+    at redis.clients.util.Pool.getResource(Pool.java:50)
+    at redis.clients.jedis.JedisPool.getResource(JedisPool.java:99)
+    at TestAdmin.main(TestAdmin.java:14)
+Caused by: redis.clients.jedis.exceptions.JedisConnectionException: java.net.ConnectException: Connection refused
+    at redis.clients.jedis.Connection.connect(Connection.java:164)
+    at redis.clients.jedis.BinaryClient.connect(BinaryClient.java:80)
+    at redis.clients.jedis.BinaryJedis.connect(BinaryJedis.java:1676)
+    at redis.clients.jedis.JedisFactory.makeObject(JedisFactory.java:87)
+    at org.apache.commons.pool2.impl.GenericObjectPool.create(GenericObjectPool.java:861)
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:435)
+    at org.apache.commons.pool2.impl.GenericObjectPool.borrowObject(GenericObjectPool.java:363)
+    at redis.clients.util.Pool.getResource(Pool.java:48)
+    ... 2 more
+Caused by: java.net.ConnectException: Connection refused
+    at java.net.PlainSocketImpl.socketConnect(Native Method)
+    at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:339)
+    at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+    at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+    at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+    at java.net.Socket.connect(Socket.java:579)
+    at redis.clients.jedis.Connection.connect(Connection.java:158)
+    ... 9 more
+</code></pre>
+<p>可以从at redis.clients.jedis.Connection.connect(Connection.java:158)看到实际是一个Socket连接：</p>
+<pre><code> socket.setSoLinger(true, 0); // Control calls close () method,
+        // the underlying socket is closed
+        // immediately
+        // &lt;-@wjw_add
+
+158:  socket.connect(new InetSocketAddress(host, port), connectionTimeout);
+</code></pre>
+<p><strong>一般这种需要检查Redis的域名配置是否正确，排查该段时间网络是否正常</strong></p>
+<h3 id="二-客户端缓冲区异常">二、客户端缓冲区异常</h3>
+<h4 id="1异常堆栈-2">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: Unexpected end of stream.
+    at redis.clients.util.RedisInputStream.ensureFill(RedisInputStream.java:199)
+    at redis.clients.util.RedisInputStream.readByte(RedisInputStream.java:40)
+    at redis.clients.jedis.Protocol.process(Protocol.java:151)
+......
+</code></pre>
+<h4 id="2异常描述-2">2.异常描述：</h4>
+<p>这个异常是客户端缓冲区异常，产生这个问题可能有三个原因：</p>
+<p>(1) 常见原因：多个线程使用一个Jedis连接，正常的情况是一个线程使用一个Jedis连接，可以使用JedisPool管理Jedis连接，实现线程安全，防止出现这种情况，例如下面代码中两个线程用了一个Jedis连接：</p>
+<pre><code>new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.get(&quot;hello&quot;);
+        }
+    }
+}).start();
+
+new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.hget(&quot;haskey&quot;, &quot;f&quot;);
+        }
+    }
+}).start();
+</code></pre>
+<p>(2) 客户端缓冲区满了</p>
+<p>Redis有三种客户端缓冲区：</p>
+<ul>
+<li>普通客户端缓冲区(normal)：用于接受普通的命令，例如get、set、mset、hgetall、zrange等</li>
+<li>slave客户端缓冲区(slave)：用于同步master节点的写命令，完成复制。</li>
+<li>发布订阅缓冲区(pubsub)：pubsub不是普通的命令，因此有单独的缓冲区。</li>
+</ul>
+<p>Redis的客户端缓冲区配置具体格式是：</p>
+<pre><code>client-output-buffer-limit &lt;class&gt; &lt;hard limit&gt; &lt;soft limit&gt; &lt;soft seconds&gt;
+</code></pre>
+<p>(a) class: 客户端类型：(a) normal、(b) slave、(c) pubsub</p>
+<p>(b) hard limit: 如果客户端使用的输出缓冲区大于hard limit，客户端会被立即关闭。</p>
+<p>(c) soft limit和soft seconds: 如果客户端使用的输出缓冲区超过了soft limit并且持续了soft limit秒，客户端会被立即关闭</p>
+<p>例如下面是一份Redis缓冲区的配置，所以当条件满足时，客户端连接会被关闭，就会出现Unexpected end of stream。</p>
+<pre><code>redis&gt; config get client-output-buffer-limit
+1) &quot;client-output-buffer-limit&quot;
+2) &quot;normal 524288000 0 0 slave 2147483648 536870912 480 pubsub 33554432 8388608 60&quot;
+</code></pre>
+<p>(3) 长时间闲置连接被服务端主动断开，可以查询timeout配置的设置以及自身连接池配置是否需要做空闲检测。</p>
+<h4 id="3解决方法-2">3.解决方法：</h4>
+<p>排查自身代码是否使用JedisPool管理Jedis连接，是否存在并发操作Jedis的情况。</p>
+<h3 id="三-客户端连接数达到最大值">三、客户端连接数达到最大值</h3>
+<h4 id="1异常堆栈-3">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: ERR max number of clients reached
+</code></pre>
+<h4 id="2异常描述-3">2.异常描述：</h4>
+<p>如果客户端连接数超过了Redis实例配置的最大maxclients</p>
+<h4 id="3解决方法-3">3.解决方法：</h4>
+<p>调大最大连接数，并找到连接数暴涨的原因(因为上述调整只是临时调整)，</p>
+<h3 id="四-客户端读写超时">四、客户端读写超时</h3>
+<h4 id="1异常堆栈-4">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: java.net.SocketTimeoutException: Read timed out
+</code></pre>
+<h4 id="2异常描述-4">2.异常描述：</h4>
+<p>该问题原因可能有如下几种：<br>
+(1) 读写超时设置的过短。<br>
+(2) 有慢查询或者Redis发生阻塞。<br>
+(3) 网络不稳定。</p>
+<h4 id="3解决方法-4">3.解决方法：</h4>
+<p>排查上述异常是否发生。排查网络环境是否跨机房、或者带宽压力过大。</p>
+<h4 id="4处理人">4.处理人：</h4>
+<p>工单。</p>
+<h3 id="五-密码相关的异常">五、密码相关的异常</h3>
+<h4 id="1异常堆栈-5">1.异常堆栈</h4>
+<p>Redis设置了密码，客户端请求没传密码：</p>
+<pre><code>Exception in thread &quot;main&quot; redis.clients.jedis.exceptions.JedisDataException: NOAUTH Authentication required.
+     at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+     at redis.clients.jedis.Protocol.process(Protocol.java:161)
+     at redis.clients.jedis.Protocol.read(Protocol.java:215)
+</code></pre>
+<p>Redis没有设置密码，客户端传了密码：</p>
+<pre><code>Exception in thread &quot;main&quot; redis.clients.jedis.exceptions.JedisDataException: ERR Client sent AUTH, but no password is set
+     at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+     at redis.clients.jedis.Protocol.process(Protocol.java:161)
+     at redis.clients.jedis.Protocol.read(Protocol.java:215)
+</code></pre>
+<p>客户端传了错误的密码：</p>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: ERR invalid password
+    at redis.clients.jedis.Protocol.processError(Protocol.java:117)
+    at redis.clients.jedis.Protocol.process(Protocol.java:151)
+    at redis.clients.jedis.Protocol.read(Protocol.java:205)
+</code></pre>
+<h4 id="2解决方法弄清楚到底有没有密码密码是否正确">2.解决方法：弄清楚到底有没有密码，密码是否正确。</h4>
+<h3 id="六-事务异常">六、事务异常</h3>
+<h4 id="1异常堆栈-6">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: EXECABORT Transaction discarded because of previous errors
+</code></pre>
+<h4 id="2异常描述-5">2.异常描述：</h4>
+<p>这个是Redis的事务异常：事务中包含了错误的命令，例如如下sett是个不存在的命令。</p>
+<pre><code>127.0.0.1:6379&gt; multi
+OK
+127.0.0.1:6379&gt; sett key world
+(error) ERR unknown command 'sett'
+127.0.0.1:6379&gt; incr counter
+QUEUED
+127.0.0.1:6379&gt; exec
+(error) EXECABORT Transaction discarded because of previous errors.
+</code></pre>
+<h4 id="3解决方法-5">3.解决方法：</h4>
+<p>代码错误。</p>
+<h3 id="七-类转换错误">七、类转换错误</h3>
+<h4 id="1异常堆栈-7">1.异常堆栈</h4>
+<pre><code>java.lang.ClassCastException: java.lang.Long cannot be cast to java.util.List
+         at redis.clients.jedis.Connection.getBinaryMultiBulkReply(Connection.java:199)
+         at redis.clients.jedis.Jedis.hgetAll(Jedis.java:851)
+         at redis.clients.jedis.ShardedJedis.hgetAll(ShardedJedis.java:198)   
+java.lang.ClassCastException: java.util.ArrayList cannot be cast to [B
+         at redis.clients.jedis.Connection.getBinaryBulkReply(Connection.java:182)
+         at redis.clients.jedis.Connection.getBulkReply(Connection.java:171)
+         at redis.clients.jedis.Jedis.rpop(Jedis.java:1109)
+         at redis.clients.jedis.ShardedJedis.rpop(ShardedJedis.java:258)
+.......
+</code></pre>
+<h4 id="2异常描述-6">2.异常描述：</h4>
+<p>Jedis正确的使用方法是：一个线程操作一个Jedis，通常来讲产生该错误是由于没有使用JedisPool造成的，例如如下代码在两个线程并发使用了一个Jedis。(get、hgetAll返回类型也是不一样的)</p>
+<pre><code>new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.set(&quot;hello&quot;, &quot;world&quot;);
+            jedis.get(&quot;hello&quot;);
+        }
+    }
+}).start();
+
+new Thread(new Runnable() {
+
+    public void run() {
+        for (int i = 0; i &lt; 100; i++) {
+            jedis.hset(&quot;hashkey&quot;, &quot;f&quot;, &quot;v&quot;);
+            jedis.hgetAll(&quot;hashkey&quot;);
+        }
+    }
+}).start();
+</code></pre>
+<h4 id="3解决方法-6">3.解决方法：</h4>
+<p>排查自身代码是否存在上述问题</p>
+<h3 id="八-命令使用错误">八、命令使用错误</h3>
+<h4 id="1异常堆栈-8">1.异常堆栈</h4>
+<pre><code>Exception in thread &quot;main&quot; redis.clients.jedis.exceptions.JedisDataException: WRONGTYPE Operation against a key holding the wrong kind of value
+    at redis.clients.jedis.Protocol.processError(Protocol.java:127)
+    at redis.clients.jedis.Protocol.process(Protocol.java:161)
+    at redis.clients.jedis.Protocol.read(Protocol.java:215)
+.....
+</code></pre>
+<h4 id="2异常描述-7">2.异常描述：</h4>
+<p>例如key=&quot;hello&quot;是字符串类型的键，而hgetAll是哈希类型的键，所以出现了错误。</p>
+<pre><code>jedis.set(&quot;hello&quot;,&quot;world&quot;);
+jedis.hgetAll(&quot;hello&quot;);
+</code></pre>
+<h4 id="3解决方法-7">3.解决方法：</h4>
+<p>修改自身代码错误。</p>
+<h3 id="九-redis使用的内存超过maxmemory配置">九、Redis使用的内存超过maxmemory配置</h3>
+<h4 id="1异常堆栈-9">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: OOM command not allowed when used memory &gt; 'maxmemory'.
+</code></pre>
+<h4 id="2异常描述-8">2.异常描述：</h4>
+<p>Redis节点(如果是集群，则是其中一个节点)使用大于该实例的内存规格(maxmemory配置)。</p>
+<h4 id="3解决方法-8">3.解决方法：</h4>
+<p>原因可能有以下几个：</p>
+<ul>
+<li>业务数据正常增加</li>
+<li>客户端缓冲区异常：例如使用了monitor、pub/sub使用不当等等</li>
+<li>纯缓存使用场景，但是maxmemory-policy配置有误(例如没有过期键的业务配置volatile-lru)</li>
+</ul>
+<p>调整maxmeory配置，但需要找到内存增大的原因。</p>
+<h3 id="十-redis正在加载持久化文件">十、Redis正在加载持久化文件</h3>
+<h4 id="1异常堆栈-10">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: LOADING Redis is loading the dataset in memory
+</code></pre>
+<h4 id="2异常描述-9">2.异常描述：</h4>
+<p>Jedis调用Redis时，如果Redis正在加载持久化文件，无法进行正常的读写。</p>
+<h4 id="3解决方法-9">3.解决方法：</h4>
+<p>检查服务器进程是否异常挂起，检查dump.rdb文件是否能正常读。</p>
+<h3 id="十一-lua脚本超时">十一、Lua脚本超时</h3>
+<h4 id="1异常堆栈-11">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: BUSY Redis is busy running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE.
+</code></pre>
+<h4 id="2异常描述-10">2.异常描述：</h4>
+<p>如果Redis当前正在执行Lua脚本，并且超过了lua-time-limit，此时Jedis调用Redis时，会收到该异常</p>
+<h4 id="3解决方法-10">3.解决方法：</h4>
+<p>按照异常提示：You can only call SCRIPT KILL or SHUTDOWN NOSAVE. (使用script kill:kill掉Lua脚本)</p>
+<h3 id="十二-连接超时">十二、 连接超时</h3>
+<h4 id="1异常堆栈-12">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisConnectionException: java.net.SocketTimeoutException: connect timed out
+</code></pre>
+<h4 id="2异常描述-11">2.异常描述：</h4>
+<p>可能产生的原因：</p>
+<ul>
+<li>连接超时设置的过短。</li>
+<li>tcp-backlog满，造成新的连接失败。</li>
+<li>客户端与服务端网络不正常。</li>
+</ul>
+<h4 id="3解决方法-11">3.解决方法：</h4>
+<p>排查网络环境和timeout设置。</p>
+<h4 id="4处理人-2">4.处理人：</h4>
+<p>工单。</p>
+<h3 id="十三-lua脚本写超时">十三、 Lua脚本写超时</h3>
+<h4 id="1异常堆栈-13">1.异常堆栈</h4>
+<pre><code>(error) UNKILLABLE Sorry the script already executed write commands against the dataset. You can either wait the script termination or kill the server in a hard way using the SHUTDOWN NOSAVE command.
+</code></pre>
+<h4 id="2异常描述-12">2.异常描述：</h4>
+<p>如果Redis当前正在执行Lua脚本，并且超过了lua-time-limit，<strong>并且已经执行过写命令</strong>，此时Jedis调用Redis时，会收到上面的异常</p>
+<h4 id="3解决方法-12">3.解决方法：</h4>
+<p>重启或者切换Redis节点。</p>
+<h3 id="十四-类加载错误">十四、类加载错误</h3>
+<h4 id="1异常堆栈-14">1.异常堆栈</h4>
+<p>例如找不到类和方法：</p>
+<pre><code>Exception in thread &quot;commons-pool-EvictionTimer&quot; java.lang.NoClassDefFoundError: redis/clients/util/IOUtils
+    at redis.clients.jedis.Connection.disconnect(Connection.java:226)
+    at redis.clients.jedis.BinaryClient.disconnect(BinaryClient.java:941)
+    at redis.clients.jedis.BinaryJedis.disconnect(BinaryJedis.java:1771)
+    at redis.clients.jedis.JedisFactory.destroyObject(JedisFactory.java:91)
+    at         org.apache.commons.pool2.impl.GenericObjectPool.destroy(GenericObjectPool.java:897)
+    at org.apache.commons.pool2.impl.GenericObjectPool.evict(GenericObjectPool.java:793)
+    at org.apache.commons.pool2.impl.BaseGenericObjectPool$Evictor.run(BaseGenericObjectPool.java:1036)
+    at java.util.TimerThread.mainLoop(Timer.java:555)
+    at java.util.TimerThread.run(Timer.java:505)
+Caused by: java.lang.ClassNotFoundException: redis.clients.util.IOUtils
+......
+</code></pre>
+<h4 id="2异常描述-13">2.异常描述：</h4>
+<p>运行时，Jedis执行命令，抛出异常：某个类找不到。一般此类问题都是由于加载多个jedis版本(例如jedis 2.9.0和jedis 2.6)，在编译期代码未出现问题，但类加载器在运行时加载了低版本的Jedis，造成运行时找不到类。</p>
+<h4 id="3解决方法-13">3.解决方法：</h4>
+<p>通常此类问题，可以将重复的jedis排除掉，例如利用maven的依赖树，把无用的依赖去掉或者exclusion掉。</p>
+<h3 id="十五-服务端命令不支持">十五、服务端命令不支持</h3>
+<h4 id="1异常堆栈-15">1.异常堆栈</h4>
+<p>例如客户端执行了geoadd命令，但是服务端返回不支持此命令</p>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: ERR unknown command 'GEOADD'
+</code></pre>
+<h4 id="2异常描述-14">2.异常描述：</h4>
+<p>该命令不能被Redis端识别，有可能有两个原因：</p>
+<ul>
+<li>使用的Redis版本不支持命令。</li>
+<li>命令本身是错误的(不过对于Jedis来说还好，不支持直接组装命令，每个API都有固定的函数)。</li>
+</ul>
+<h4 id="3解决方法-14">3.解决方法：</h4>
+<p>确认是否有Redis版本支持该命令。</p>
+<h3 id="十六-pipeline错误使用">十六、pipeline错误使用</h3>
+<h4 id="1异常堆栈-16">1.异常堆栈</h4>
+<pre><code>redis.clients.jedis.exceptions.JedisDataException: Please close pipeline or multi block before calling this method.
+</code></pre>
+<h4 id="2异常描述-15">2.异常描述：</h4>
+<p>在pipeline.sync()执行之前，通过response.get()获取值，在pipeline.sync()执行前，命令没有执行(可以通过monitor做验证)，下面代码就会引起上述异常</p>
+<pre><code>Jedis jedis = new Jedis(&quot;127.0.0.1&quot;, 6379);
+Pipeline pipeline = jedis.pipelined();
+pipeline.set(&quot;hello&quot;, &quot;world&quot;); 
+pipeline.set(&quot;java&quot;, &quot;jedis&quot;);
+    
+Response&lt;String&gt; pipeString = pipeline.get(&quot;java&quot;);
+//这个get必须在sync之后，如果是批量获取值建议直接用List&lt;Object&gt; objectList = pipeline.syncAndReturnAll();
+System.out.println(pipeString.get());
+//命令此时真正执行
+pipeline.sync();
+</code></pre>
+<p>Jedis中Reponse中get()方法，有个判断:如果set=false就会报错，而response中的set初始化为false.</p>
+<pre><code>public T get() {
+  // if response has dependency response and dependency is not built,
+  // build it first and no more!!
+  if (dependency != null &amp;&amp; dependency.set &amp;&amp; !dependency.built) {
+    dependency.build();
+  }
+  if (!set) {
+    throw new JedisDataException(
+        &quot;Please close pipeline or multi block before calling this method.&quot;);
+  }
+  if (!built) {
+    build();
+  }
+  if (exception != null) {
+    throw exception;
+  }
+  return response;
+}
+</code></pre>
+<p>pipeline.sync()会每个结果设置set=true。</p>
+<pre><code>public void sync() {
+  if (getPipelinedResponseLength() &gt; 0) {
+    List&lt;Object&gt; unformatted = client.getAll();
+    for (Object o : unformatted) {
+      generateResponse(o);
+    }
+  }
+}
+</code></pre>
+<p>其中generateResponse(o):</p>
+<pre><code>protected Response&lt;?&gt; generateResponse(Object data) {
+  Response&lt;?&gt; response = pipelinedResponses.poll();
+  if (response != null) {
+    response.set(data);
+  }
+  return response;
+}
+</code></pre>
+<p>其中response.set(data);</p>
+<pre><code>public void set(Object data) {
+    this.data = data;
+    set = true;
+}
+</code></pre>
+<h4 id="3解决方法-15">3.解决方法：</h4>
+<p>实际上对于批量结果的解析，建议使用pipeline.syncAndReturnAll()来实现，下面操作模拟了批量hgetAll</p>
+<pre><code>/**
+* pipeline模拟批量hgetAll
+* @param keyList
+* @return
+*/
+public Map&lt;String, Map&lt;String, String&gt;&gt; mHgetAll(List&lt;String&gt; keyList) {
+// 1.生成pipeline对象
+Pipeline pipeline = jedis.pipelined();
+// 2.pipeline执行命令，注意此时命令并未真正执行
+for (String key : keyList) {
+  pipeline.hgetAll(key);
+}
+// 3.执行命令 syncAndReturnAll()返回结果
+List&lt;Object&gt; objectList = pipeline.syncAndReturnAll();
+if (objectList == null || objectList.isEmpty()) {
+  return Collections.emptyMap();
+}
+    
+// 4.解析结果
+Map&lt;String,Map&lt;String, String&gt;&gt; resultMap = new HashMap&lt;String, Map&lt;String,String&gt;&gt;();
+for (int i = 0; i &lt; objectList.size(); i++) {
+  Object object = objectList.get(i);
+  Map&lt;String, String&gt; map = (Map&lt;String, String&gt;) object;
+  String key = keyList.get(i);
+  resultMap.put(key, map);
+}
+return resultMap;
+}
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[jedis集群maxTotal等配置]]></title>
+        <id>https://lehy786.github.io/post/jedis-ji-qun-maxtotal-deng-pei-zhi/</id>
+        <link href="https://lehy786.github.io/post/jedis-ji-qun-maxtotal-deng-pei-zhi/">
+        </link>
+        <updated>2021-04-20T02:01:07.000Z</updated>
+        <content type="html"><![CDATA[<h3 id="关于jedis集群maxtotal等配置连接数概念是否连接到每个实例的观察">关于Jedis集群maxTotal等配置，连接数概念是否连接到每个实例的观察</h3>
+<h4 id="结论">结论</h4>
+<p>根据Jedis-2.9.0的源码实现，得出连接池设置公式如下：<br>
+1） 应用端最大连接数估算公式：maxTotal * pod数 &lt;10000* 0.8<br>
+2） 应用端最大闲置连接数设置： 0 &lt; maxIdel &lt;= maxTotal<br>
+3） 爆款场景建议: maxIdel == maxTotal == Tomcat线程数， 并满足以上公式<br>
+maxTotal、maxIdle、minIdle：均针对每个实例的连接数设置</p>
+<h4 id="代码分析">代码分析：</h4>
+<p>首先看最主要的代码处，该Cache保存cluster对应的槽位信息和节点信息，可以根据槽位或根据节点去不同的连接池借取连接使用。此处为cluster中的一个node新建连接池。</p>
+<pre><code class="language-java">//JedisClusterInfoCache.java 保存对应的槽和节点
+private final Map&lt;String, JedisPool&gt; nodes = new HashMap&lt;String, JedisPool&gt;(); // 保存节点对应的连接池
+private final Map&lt;Integer, JedisPool&gt; slots = new HashMap&lt;Integer, JedisPool&gt;(); // 保存slot对应的连接池 slot-&gt;node-&gt;pool
+private final GenericObjectPoolConfig poolConfig; // 配置的连接池参数，为一份
+//...
+public JedisPool setupNodeIfNotExist(HostAndPort node) {
+    w.lock();
+    try {
+        String nodeKey = getNodeKey(node);
+        JedisPool existingPool = nodes.get(nodeKey);
+        if (existingPool != null) return existingPool;
+
+        // 此处新建连接池使用的配置，为传入的poolConfig，所有节点使用同样连接池配置
+        JedisPool nodePool = new JedisPool(poolConfig, node.getHost(), node.getPort(),
+        	connectionTimeout, soTimeout, password, 0, null, false, null, null, null);
+        nodes.put(nodeKey, nodePool);
+        return nodePool;
+    } finally {
+    	w.unlock();
+    }
+}
+</code></pre>
+<p>而关于连接的管理：</p>
+<pre><code class="language-java">// JedisClusterConnectionHandler 连接处理
+...
+abstract Jedis getConnection();  // 从JedisClusterInfoCache中的nodes中取出每个连接池，逐个连接池尝试借取可用连接
+abstract Jedis getConnectionFromSlot(int var1); // 从JedisClusterInfoCache中的slots中，返回var1槽对应的节点的连接池，在此借取连接
+public Jedis getConnectionFromNode(HostAndPort node) {
+	return this.cache.setupNodeIfNotExist(node).getResource(); // 根据节点获取对应连接池
+}
+</code></pre>
+<p>从头开始跟踪一条命令的执行过程：（get）</p>
+<pre><code class="language-java">// BinaryJedisCluster
+public byte[] get(final byte[] key) {
+return (byte[])(new JedisClusterCommand&lt;byte[]&gt;(this.connectionHandler, this.maxAttempts) {
+public byte[] execute(Jedis connection) {
+return connection.get(key);
+}
+}).runBinary(key);
+}
+</code></pre>
+<p>其中重写了<code>execute</code>方法，实际实现方法里，调用了Jedis的get接口与服务端redis交互。而<code>runBinary</code>如下，最终会调用重写的execute方法，使用***对应的connection***执行具体命令。</p>
+<pre><code class="language-java">// JedisClusterCommand 命令的执行
+public T runBinary(byte[] key) {
+    if (key == null) {
+    	throw new JedisClusterException(&quot;No way to dispatch this command to Redis Cluster.&quot;);
+    }
+ 
+	return runWithRetries(key, this.maxAttempts, false, false);
+}
+ 
+...
+ 
+private T runWithRetries(byte[] key, int attempts, boolean tryRandomNode, boolean asking) {
+    ...
+    if (tryRandomNode) {
+    	connection = connectionHandler.getConnection();
+    } else {
+    	connection = connectionHandler.getConnectionFromSlot(JedisClusterCRC16.getSlot(key));
+    }
+    ...
+    return execute(connection);
+}
+ 
+/**
+* 使用的连接为
+* 1. 随机连接
+* 2. 根据key计算得出槽位，再获取对应节点连接
+*
+</code></pre>
+<p>其中获取的连接，如<code>getConnectionFromSlot</code>，获取的是<code>JedisClusterInfoCache</code>中(最上面一段代码)<code>slots</code>保存的连接池返回的连接：</p>
+<pre><code class="language-java">public Jedis getConnectionFromSlot(int slot) {
+    JedisPool connectionPool = cache.getSlotPool(slot);
+    if (connectionPool != null) {
+        // It can't guaranteed to get valid connection because of node
+        // assignment
+        return connectionPool.getResource();
+    } else {
+        renewSlotCache(); //It's abnormal situation for cluster mode, that we have just nothing for slot, try to rediscover state
+        connectionPool = cache.getSlotPool(slot);
+        if (connectionPool != null) {
+        	return connectionPool.getResource();
+        } else {
+            //no choice, fallback to new connection to random node
+            return getConnection();
+        }
+    }
+}
+</code></pre>
+<p>slots中保存的连接池，其初始化过程为：</p>
+<pre><code class="language-java">private void initializeSlotsCache(Set&lt;HostAndPort&gt; startNodes, GenericObjectPoolConfig poolConfig, String password) {
+    Iterator var4 = startNodes.iterator();
+
+    while(var4.hasNext()) {
+        HostAndPort hostAndPort = (HostAndPort)var4.next();
+        Jedis jedis = new Jedis(hostAndPort.getHost(), hostAndPort.getPort());
+        if (password != null) {
+        	jedis.auth(password);
+        }
+
+        try {
+        	this.cache.discoverClusterNodesAndSlots(jedis);
+        	break;
+        } catch (JedisConnectionException var11) {
+        } finally {
+            if (jedis != null) {
+            jedis.close();
+        }
+
+        }
+    }
+}
+</code></pre>
+<p>在这其中去<code>discoverClusterNodesAndSlots</code>  的时候：</p>
+<pre><code class="language-java">public void discoverClusterNodesAndSlots(Jedis jedis) {
+    w.lock();
+
+    try {
+        reset();
+        List&lt;Object&gt; slots = jedis.clusterSlots();
+
+        for (Object slotInfoObj : slots) {
+            List&lt;Object&gt; slotInfo = (List&lt;Object&gt;) slotInfoObj;
+
+            if (slotInfo.size() &lt;= MASTER_NODE_INDEX) {
+            	continue;
+            }
+
+            List&lt;Integer&gt; slotNums = getAssignedSlotArray(slotInfo);
+
+            // hostInfos
+            int size = slotInfo.size();
+            for (int i = MASTER_NODE_INDEX; i &lt; size; i++) {
+                List&lt;Object&gt; hostInfos = (List&lt;Object&gt;) slotInfo.get(i);
+                if (hostInfos.size() &lt;= 0) {
+                	continue;
+                }
+
+                HostAndPort targetNode = generateHostAndPort(hostInfos);
+                setupNodeIfNotExist(targetNode);
+                if (i == MASTER_NODE_INDEX) {
+                	assignSlotsToNode(slotNums, targetNode);
+                }
+            }
+        }
+    } finally {
+    	w.unlock();
+    }
+}
+/**
+* 注意到
+* HostAndPort targetNode = generateHostAndPort(hostInfos);
+* setupNodeIfNotExist(targetNode);
+* 第一次用Jedis连接获取到集群的的槽位信息和host信息，这个hostInfos包含了所有节点(N对主从节点和端口和实例ID)
+* setupNodeIfNotExist就回到最上面一段代码，对每个targetNode都建立一个连接池。
+*
+*
+</code></pre>
+<p>至此，每个实例节点保存有一个连接池，成立。maxTotal和maxIdle等配置针对单个实例配置。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[redis-3.2.9-after-issue]]></title>
+        <id>https://lehy786.github.io/post/redis-329-after-issue/</id>
+        <link href="https://lehy786.github.io/post/redis-329-after-issue/">
+        </link>
+        <updated>2021-04-20T02:00:32.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="redis-32x-after">Redis-3.2.x after</h1>
+<h2 id="32x">3.2.x</h2>
+<h4 id="flush-append-only-buffers-before-existing-4311-aof-329-font-colorred该版本未修复font">· Flush append only buffers before existing. #4311 <code>AOF</code> <code>3.2.9</code> <font color=red><code>该版本未修复</code></font></h4>
+<p>执行SHUTDOWN命令后，存在部分appendonly buffer未写入aof文件。</p>
+<h4 id="expire-then-persist-unexpected-behavior-4048-font-colorgreen329未复现font">· EXPIRE then PERSIST Unexpected Behavior #4048 <font color=green><code>3.2.9未复现</code></font></h4>
+<p>EXPIRE一个key，过期后执行PERSIST，该key仍会被持久化；EXPIRE一个key，过期后GET，再执行PERSIST，该key则正常地不被保存。</p>
+<h4 id="slave-is-unresponsive-when-loading-data-in-memory-after-resyncing-from-master-4183-328">· Slave is unresponsive when loading data in memory after resyncing from master #4183 <code>3.2.8</code></h4>
+<p>在集群模式下运行Redis 3.2.8。 主从故障切换后，新的slave服务器将从新的master服务器重新同步。 将数据复制到slave主机上的磁盘后，slave服务器开始将数据加载到内存中。 在重载期间，slave无响应直到超时，而不是返回LOADING响应。</p>
+<h2 id="4x">4.x</h2>
+<h5 id="redis-4x-new-psync2-feature-does-not-work-correctly-bug-located-4268-replication-401-font-colorred该版本未修复font">· Redis 4.x new PSYNC2 feature does not work correctly, bug located #4268 <code>replication</code> <code>4.0.1</code>  <font color=red><code>该版本未修复</code></font></h5>
+<p>当一个redis新成为从属，并且准备执行部分同步时，slave的repl_backlog将不会被初始化（即无法使用），从而它不会记录任何从master传递的命令。这使得slave的复制偏移总是比master的小。所以在切换之后，当新的slave希望与新的master进行PSYNC，但是偏移量检查进程将拒绝PSYNC命令，因为新master偏移量比slave小。</p>
+<h4 id="different-results-for-zadd-alpinedebian-docker-container-4391-non-critical-bug-3211-402-font-colorred该版本未修复font">· Different results for ZADD alpine/debian docker container #4391 <code>non critical bug</code> <code>3.2.11 &amp; 4.0.2</code> <font color=red><code>该版本未修复</code></font></h4>
+<p>将空字符串作为ZSET的score，使用Debian能成功执行，使用Alpine不能成功执行。</p>
+<p>Debian use libc and alpine musl.</p>
+<pre><code>1. Debian 
+# run command
+docker exec -it redis redis-cli &quot;ZADD&quot; &quot;session&quot; &quot;&quot; &quot;064f06e4rg60reg6&quot;
+# result
+(integer) 1
+</code></pre>
+<pre><code>2. Alpine
+# run command
+docker exec -it redis redis-cli &quot;ZADD&quot; &quot;session&quot; &quot;&quot; &quot;064f06e4rg60reg6&quot;
+# result
+(error) ERR value is not a valid float
+</code></pre>
+<h4 id="redis-server-startup-failed-when-using-mixed-rdbaof-4902-rdb-409-font-colorred该版本未修复font">· redis-server startup failed when using mixed RDB+AOF #4902 <code>RDB</code> <code>4.0.9</code> <font color=red><code>该版本未修复</code></font></h4>
+<pre><code>aof-use-rdb-preamble yes
+appendonly yes
+</code></pre>
+<p>保存RDB时追加了8字节的<code>checksum</code>，不论<code>rdbchecksum</code>是否开启：</p>
+<pre><code>    /* CRC64 checksum. It will be zero if checksum computation is disabled, the
+     * loading code skips the check in this case. */
+    cksum = rdb-&gt;cksum;
+    memrev64ifbe(&amp;cksum);
+    if (rioWrite(rdb,&amp;cksum,8) == 0) goto werr;
+    return C_OK;
+</code></pre>
+<p>加载RDB时，只有在<code>rdbchecksum</code>选项开启时才会读该8字节的<code>checksum</code>，</p>
+<pre><code>    /* Verify the checksum if RDB version is &gt;= 5 */
+    if (rdbver &gt;= 5 &amp;&amp; server.rdb_checksum) {
+        uint64_t cksum, expected = rdb-&gt;cksum;
+
+        if (rioRead(rdb,&amp;cksum,8) == 0) goto eoferr;
+        memrev64ifbe(&amp;cksum);
+        if (cksum == 0) {
+            serverLog(LL_WARNING,&quot;RDB file was saved with checksum disabled: no check performed.&quot;);
+        } else if (cksum != expected) {
+            serverLog(LL_WARNING,&quot;Wrong RDB checksum. Aborting now.&quot;);
+            rdbExitReportCorruptRDB(&quot;RDB CRC error&quot;);
+        }
+    }
+    return C_OK;
+</code></pre>
+<p>以至于关闭<code>checksum</code>选项时，RDB加载失败而导致启动报错。</p>
+<h4 id="redis-4x-lazyfree-memory-leak-may-happen-when-free-slowlog-entry-4323-402-font-colorredcritical-bugfont-font-colorred该版本未修复font-font-colorgreen407修复font">· Redis 4.x lazyfree: memory leak may happen when free slowlog entry #4323 <code>4.0.2</code>  <font color='red'><code>critical bug</code></font>  <font color=red><code>该版本未修复</code></font> <font color=green><code>4.0.7修复</code></font></h4>
+<p>We just use <code>sds</code> instead of <code>robj</code> to store fields for <code>OBJ_HASH</code>, <code>OBJ_SET</code>, <code>OBJ_ZSET</code>, <code>OBJ_LIST</code>. But for <code>OBJ_STRING</code> the value is still <code>robj</code></p>
+<pre><code>slowlog.c
+slowlogEntry *slowlogCreateEntry(client *c, robj **argv, int argc, long long duration) {
+    ...
+            /* Trim too long strings as well... */
+            if (argv[j]-&gt;type == OBJ_STRING &amp;&amp;
+                sdsEncodedObject(argv[j]) &amp;&amp;
+                sdslen(argv[j]-&gt;ptr) &gt; SLOWLOG_ENTRY_MAX_STRING)
+            {
+                sds s = sdsnewlen(argv[j]-&gt;ptr, SLOWLOG_ENTRY_MAX_STRING);
+
+                s = sdscatprintf(s,&quot;... (%lu more bytes)&quot;,
+                    (unsigned long)
+                    sdslen(argv[j]-&gt;ptr) - SLOWLOG_ENTRY_MAX_STRING);
+                se-&gt;argv[j] = createObject(OBJ_STRING,s);
+            } else {
+                se-&gt;argv[j] = argv[j];
+                incrRefCount(argv[j]);
+            }
+    ...
+}
+</code></pre>
+<p>当sdslen长度小于SLOWLOG_ENTRY_MAX_STRING， <code>slowlogEntry</code> 对象直接指向同一个对象并增加refcount。具体表现如下：</p>
+<pre><code>127.0.0.1:6379&gt; config set slowlog-log-slower-than 1
+OK
+127.0.0.1:6379&gt; set foo bar
+OK
+127.0.0.1:6379&gt; object refcount foo
+(integer) 2
+</code></pre>
+<p>如果<code>lazyfree</code>机制和<code>SLOWLOG reset</code> 同时调用了<code>decrRefCount()</code>,</p>
+<pre><code>void decrRefCount(robj *o) {
+    if (o-&gt;refcount == 1) {
+        switch(o-&gt;type) {
+        case OBJ_STRING: freeStringObject(o); break;
+        case OBJ_LIST: freeListObject(o); break;
+        case OBJ_SET: freeSetObject(o); break;
+        case OBJ_ZSET: freeZsetObject(o); break;
+        case OBJ_HASH: freeHashObject(o); break;
+        case OBJ_MODULE: freeModuleObject(o); break;
+        default: serverPanic(&quot;Unknown object type&quot;); break;
+        }
+        zfree(o);
+    } else {
+        if (o-&gt;refcount &lt;= 0) serverPanic(&quot;decrRefCount against refcount &lt;= 0&quot;);
+        if (o-&gt;refcount != OBJ_SHARED_REFCOUNT) o-&gt;refcount--;
+    }
+}
+</code></pre>
+<p>o-&gt;refcount 直接从2降到0，该对象将不会释放，而发生内存泄漏。</p>
+<h4 id="lua-set-question-when-using-min-slaves-to-write-configure-5301-lua-font-colorredcritical-bugfont-font-colorred4012未修复font">· Lua set question when using min-slaves-to-write configure. #5301 <code>Lua</code>  <font color='red'><code>critical bug</code></font> <font color=red><code>4.0.12未修复</code></font></h4>
+<p>当设置<code>min-slaves-to-write</code>为1时，如master无连接的slave，在<code>SET key value</code>命令时***应该返回错误无法插入***，但使用Lua执行同样内容的命令则可以执行成功。</p>
+<h4 id="fix-rdb-save-by-allowing-dumping-of-expire-keys-4950-font-colorred400-409未修复font-font-colorgreen4010修复font">· fix rdb save by allowing dumping of expire keys #4950  <font color='red'><code>4.0.0-4.0.9未修复</code></font> <font color=green><code>4.0.10修复</code></font></h4>
+<p>因开启aof-use-rdb-preamble，某些情况下出现数据不一致。</p>
+<pre><code>Test case:
+
+* Time1: SET a 10
+* Time2: EXPIREAT a $time5
+* Time3: INCR a
+* Time4: PERSIT A. Start bgrewiteaof with RDB preamble. The value of a is 11 without expire time.
+* Time5: Restart redis from the RDB+AOF: consistency violation.
+</code></pre>
+<p>此时a不是11，而是1。因为当Time5步骤时，重启redis加载RDB时，a已经过期了，这时加载到<code>INCR a</code>时就变成了把不存在的a增加1，最后得到1，出现数据不一致。</p>
+<h2 id="5x">5.x</h2>
+<h4 id="cluster-failover-unreliable-when-many-keys-are-expiring-4027-50-rc1-font-colorgreen该版本已修复font">· Cluster failover unreliable when many keys are expiring #4027 <code>5.0-rc1</code> <font color=green><code>该版本已修复</code></font></h4>
+<p>手动FAILOVER时，master暂停接收客户端的命令，此时slave会同步处理命令到与master的offset一致处，然后进行failover。虽然master暂停了客户端，但EXPIRE仍然在进行中，如果此时master中部分key已经失效，这将导致<code>DEL</code>命令也会被合成到slave执行并且master_repl_offset也会增加。而slave的实际偏移将会超过此前记录的master_repl_offset，导致failover失败。</p>
+<h4 id="mem_fragmentation_bytes-in-info-command-showing-insane-number-5580-500-502-font-colorgreen503修复font">· mem_fragmentation_bytes in info command showing insane number #5580 <code>5.0.0-5.0.2</code> <font color=green><code>5.0.3修复</code></font></h4>
+<p>当mem_fragmentation_bytes溢出为负数时，在info命令中显示为一个错误的超大正整数。</p>
+<h4 id="eviction-during-aof-loading-5686-400-502-font-colorgreen503修复font">· Eviction during AOF loading #5686 <code>4.0.0-5.0.2</code> <font color=green><code>5.0.3修复</code></font></h4>
+<p>AOF加载的时候，<code>CONFIG SET</code>命令可用，可能导致意外的错误，比如键被意外驱逐而导致数据不一致：</p>
+<pre><code>SET X 1000
+INCR X 1
+最后X的值为1
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[redis-cluster-nodes-参数含义]]></title>
+        <id>https://lehy786.github.io/post/redis-cluster-nodes-can-shu-han-yi/</id>
+        <link href="https://lehy786.github.io/post/redis-cluster-nodes-can-shu-han-yi/">
+        </link>
+        <updated>2021-04-20T02:00:00.000Z</updated>
+        <content type="html"><![CDATA[<pre><code>&lt;id&gt; &lt;ip:port&gt; &lt;flags&gt; &lt;master&gt; &lt;ping-sent&gt; &lt;pong-recv&gt; &lt;config-epoch&gt; &lt;link-state&gt; &lt;slot&gt; &lt;slot&gt; ... &lt;slot&gt;
+</code></pre>
+<p>每个字段的含义如下：</p>
+<ol>
+<li>
+<p><code>id</code>：节点 ID，一个40个字符的随机字符串，当一个节点被创建时不会再发生变化（除非<code>CLUSTER RESET HARD</code>被使用）。</p>
+</li>
+<li>
+<p><code>ip:port</code>：客户端应该联系节点以运行查询的节点地址。</p>
+</li>
+<li>
+<p><code>flags</code>：逗号列表分隔的标志：<code>myself</code>，<code>master</code>，<code>slave</code>，<code>fail?</code>，<code>fail</code>，<code>handshake</code>，<code>noaddr</code>，<code>noflags</code>。标志在下一节详细解释。</p>
+</li>
+<li>
+<p><code>master</code>：如果节点是从属节点，并且主节点已知，则节点ID为主节点，否则为“ - ”字符。</p>
+</li>
+<li>
+<p><code>ping-sent</code>：以毫秒为单位的当前激活的ping发送的unix时间，如果没有挂起的ping，则为零。</p>
+</li>
+<li>
+<p><code>pong-recv</code>：毫秒 unix 时间收到最后一个乒乓球。</p>
+</li>
+<li>
+<p><code>config-epoch</code>：当前节点（或当前主节点，如果该节点是从节点）的配置时期（或版本）。每次发生故障切换时，都会创建一个新的，唯一的，单调递增的配置时期。如果多个节点声称服务于相同的哈希槽，则具有较高配置时期的节点将获胜。</p>
+</li>
+<li>
+<p><code>link-state</code>：用于节点到节点集群总线的链路状态。我们使用此链接与节点进行通信。可以是<code>connected</code>或<code>disconnected</code>。</p>
+</li>
+<li>
+<p><code>slot</code>：散列槽号或范围。从参数9开始，但总共可能有16384个条目（限制从未达到）。这是此节点提供的散列槽列表。如果条目仅仅是一个数字，则被解析为这样。如果它是一个范围，它是在形式<code>start-end</code>，并且意味着节点负责所有散列时隙从<code>start</code>到<code>end</code>包括起始和结束值。</p>
+</li>
+</ol>
+<p>标志的含义（字段编号3）：</p>
+<ul>
+<li>
+<p><code>myself</code>：您正在联系的节点。</p>
+</li>
+<li>
+<p><code>master</code>：节点是主人。</p>
+</li>
+<li>
+<p><code>slave</code>：节点是从属的。</p>
+</li>
+<li>
+<p><code>fail?</code>：节点处于<code>PFAIL</code>状态。对于正在联系的节点无法访问，但仍然可以在逻辑上访问（不处于<code>FAIL</code>状态）。</p>
+</li>
+<li>
+<p><code>fail</code>：节点处于<code>FAIL</code>状态。对于将<code>PFAIL</code>状态提升为<code>FAIL</code>的多个节点而言，这是无法访问的。</p>
+</li>
+<li>
+<p><code>handshake</code>：不受信任的节点，我们握手。</p>
+</li>
+<li>
+<p><code>noaddr</code>：此节点没有已知的地址。</p>
+</li>
+<li>
+<p><code>noflags</code>：根本没有标志。</p>
+</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[redis-trib-增删节点]]></title>
+        <id>https://lehy786.github.io/post/redis-trib-zeng-shan-jie-dian/</id>
+        <link href="https://lehy786.github.io/post/redis-trib-zeng-shan-jie-dian/">
+        </link>
+        <updated>2021-04-20T01:59:43.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="添加为从节点">添加为从节点</h2>
+<pre><code>./redis-trib.rb add-node --slave --master-id 339a50df26f4722f14faba2a8fe3cad508059e88 192.168.17.168:7005 192.168.17.168:7001 
+注释： 
+--slave，表示添加的是从节点 
+--master-id 339a50df26f4722f14faba2a8fe3cad508059e88,主节点的node id，这个id是7001的节点id 表示将新节点添加为7001的slave 
+192.168.17.168:7005,新节点 
+192.168.17.168:7001集群任一个旧节点 
+添加slave 不需要分配哈希槽 
+</code></pre>
+<h2 id="添加为主节点">添加为主节点</h2>
+<pre><code>1)添加为主节点 
+redis-trib.rb add-node 192.168.17.168:7004 192.168.17.168:7001 
+注释： 
+192.168.17.168:7004是新增的节点 
+192.168.17.168:7001是集群中任一旧节点 
+
+2)连接集群,执行cluster nodes 查看集群状态 
+
+3)显示已经添加到集群中,但是并没有哈希槽,给他分配哈希槽 
+./redis-trib.rb reshard 192.168.17.168:7001  #这个节点是集群中任一节点都可以,只要能连上就可以 
+
+过程： 
+How many slots do you want to move (from 1 to 16384)? 1000  #输入1000表示要移动1000个哈希槽 
+
+
+What is the receiving node ID?   #把这1000个哈希槽给谁呢？输入7004节点对应的id 
+
+
+Source node #1: all    #输入all表示从所有的哈希槽拥有者中抽取1000个给7004节点 
+也可以从固定的节点中拿100个 Source node #1: 339a50df26f4722f14faba2a8fe3cad508059e88    #输入某个节点的id表示 从该节点上拿1000个 给7004这个节点 然后再执行done命令  
+
+
+我们选择all 摁回车会展示分配槽的信息,再输入yes 回车就分配完成了。 
+</code></pre>
+<h2 id="删除从节点">删除从节点</h2>
+<pre><code>1)直接删除就可以了 
+./redis-trib.rb del-node 192.168.17.168:7005 081057b99f96b02ecad64ce6e4ab92c9d494a170 
+注释： 
+192.168.17.168:7005  要删除的从节点IP 端口号 
+081057b99f96b02ecad64ce6e4ab92c9d494a170  要删除从节点的 node id 
+</code></pre>
+<h2 id="删除主节点">删除主节点</h2>
+<pre><code>如果主节点有从节点，将从节点转移到其他主节点 
+如果主节点有slot，去掉分配的slot，然后在删除主节点 
+1)我们移除上面添加的7004主节点 
+2)取消分配的slot,下面是主要过程 
+./redis-trib.rb reshard 192.168.17.168:7004  #要移除的主节点ip 端口号 
+
+
+过程： 
+How many slots do you want to move (from 1 to 16384)? 1000  #移除多少个哈希槽,7004有1000个 全部移走 
+What is the receiving node ID? 339a50df26f4722f14faba2a8fe3cad508059e88 //接收7004节点slot的master  我们用7001来接收 
+Source node #1:d33aba61b519cbc0b5d7f33b825863d8f78a8925 //被删除master的node-id   
+Source node #2:done   
+Do you want to proceed with the proposed reshard plan (yes/no)? yes //取消slot后，reshard  
+
+
+3)执行第二步之后,7004节点的哈希槽就没有了,然后删除该7004节点 
+./redis-trib.rb del-node 192.168.17.168:7004 d33aba61b519cbc0b5d7f33b825863d8f78a8925 
+</code></pre>
+<pre><code>./redis-trib.rb create --replicas 0 192.168.17.168:7001 192.168.17.168:7002 192.168.17.168:7003
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[redis-trib.rb搭建带密码的集群]]></title>
+        <id>https://lehy786.github.io/post/redis-tribrb-da-jian-dai-mi-ma-de-ji-qun/</id>
+        <link href="https://lehy786.github.io/post/redis-tribrb-da-jian-dai-mi-ma-de-ji-qun/">
+        </link>
+        <updated>2021-04-20T01:59:22.000Z</updated>
+        <content type="html"><![CDATA[<p>找到这一行：</p>
+<pre><code>@r = Redis.new(:host =&gt; @info[:host], :port =&gt; @info[:port], :timeout =&gt; 60)
+</code></pre>
+<p>修改：</p>
+<pre><code>@r = Redis.new(:host =&gt; @info[:host], :port =&gt; @info[:port], :timeout =&gt; 60, :password =&gt; &quot;密码&quot;)
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[redis中的纪元]]></title>
+        <id>https://lehy786.github.io/post/redis-zhong-de-ji-yuan/</id>
+        <link href="https://lehy786.github.io/post/redis-zhong-de-ji-yuan/">
+        </link>
+        <updated>2021-04-20T01:58:49.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="纪元epoch"><strong>纪元（epoch）</strong></h2>
+<p>Redis Cluster 使用了类似于 <em><strong>Raft</strong></em> 算法 <em><strong>term</strong></em>（任期）的概念称为 <em><strong>epoch</strong></em>（纪元），用来给事件增加版本号。Redis 集群中的纪元主要是两种：<em><strong>currentEpoch</strong></em> 和 <em><strong>configEpoch</strong></em>。</p>
+<h2 id="currentepoch"><strong>currentEpoch</strong></h2>
+<p>这是一个集群状态相关的概念，可以当做记录集群状态变更的递增版本号。每个集群节点，都会通过 server.cluster-&gt;currentEpoch 记录当前的 <em><strong>currentEpoch</strong></em>。</p>
+<p>集群节点创建时，不管是 <strong>master</strong> 还是 <strong>slave</strong>，都置 <strong>currentEpoch</strong> 为 0。当前节点接收到来自其他节点的包时，如果发送者的 <strong>currentEpoch</strong>（消息头部会包含发送者的 <em><strong>currentEpoch</strong></em>）大于当前节点的***currentEpoch***，那么当前节点会更新 <strong>currentEpoch</strong> 为发送者的 <em><strong>currentEpoch</strong></em>。因此，集群中所有节点的 <em><strong>currentEpoch</strong></em> 最终会达成一致，相当于对集群状态的认知达成了一致。</p>
+<h2 id="currentepoch-作用"><strong>currentEpoch 作用</strong></h2>
+<p><strong>currentEpoch</strong> 作用在于，当集群的状态发生改变，某个节点为了执行一些动作需要寻求其他节点的同意时，就会增加 <em><strong>currentEpoch</strong></em> 的值。目前 <em><strong>currentEpoch</strong></em> 只用于 <strong>slave</strong> 的故障转移流程，这就跟哨兵中的sentinel.current_epoch 作用是一模一样的。当 <em><strong>slave A</strong></em> 发现其所属的 **<em>master<em><strong>下线时，就会试图发起故障转移流程。首先就是增加 <strong>currentEpoch</strong> 的值，这个增加后的 <strong>currentEpoch</strong> 是所有集群节点中最大的。然后</strong>slave A</em></em> 向所有节点发起拉票请求，请求其他 <em><strong>master</strong></em> 投票给自己，使自己能成为新的 <em><strong>master</strong></em>。其他节点收到包后，发现发送者的 <em><strong>currentEpoch</strong></em> 比自己的 <em><strong>currentEpoch</strong></em> 大，就会更新自己的 <em><strong>currentEpoch</strong></em>，并在尚未投票的情况下，投票给 <em><strong>slave A</strong></em>，表示同意使其成为新的 <em><strong>master</strong></em>。</p>
+<h2 id="configepoch"><strong>configEpoch</strong></h2>
+<p>这是一个集群节点配置相关的概念，每个集群节点都有自己独一无二的 configepoch。所谓的节点配置，实际上是指节点所负责的槽位信息。</p>
+<p>每一个 <strong>master</strong> 在向其他节点发送包时，都会附带其 <strong>configEpoch</strong> 信息，以及一份表示它所负责的 <strong>slots</strong> 信息。而 <strong>slave</strong> 向其他节点发送包时，其包中的 <em><strong>configEpoch</strong></em> 和负责槽位信息，是其 <strong>master</strong> 的 <strong>configEpoch</strong> 和负责的 <em><strong>slot</strong></em> 信息。节点收到包之后，就会根据包中的 ***configEpoch***和负责的 <em><strong>slots</strong></em> 信息，记录到相应节点属性中。</p>
+<h2 id="configepoch-作用"><strong>configEpoch 作用</strong></h2>
+<p><strong>configEpoch</strong> 主要用于解决不同的节点的配置发生冲突的情况。举个例子就明白了：节点A 宣称负责 <strong>slot 1</strong>，其向外发送的包中，包含了自己的 <strong>configEpoch</strong> 和负责的 <strong>slots</strong> 信息。节点 C 收到 A 发来的包后，发现自己当前没有记录 <em><strong>slot 1</strong></em> 的负责节点（也就是 server.cluster-&gt;slots[1] 为 NULL），就会将 A 置为 <em><strong>slot 1</strong></em> 的负责节点（server.cluster-&gt;slots[1] = A），并记录节点 A 的 <strong>configEpoch</strong>。后来，节点 C 又收到了 B 发来的包，它也宣称负责 <em><strong>slot 1</strong></em>，此时，如何判断 <em><strong>slot 1</strong></em> 到底由谁负责呢？</p>
+<p>这就是 <strong>configEpoch</strong> 起作用的时候了，C 在 B 发来的包中，发现它的 <em><strong>configEpoch</strong></em>，要比 A 的大，说明 B 是更新的配置。因此，就将 <strong>slot 1</strong> 的负责节点设置为 B（server.cluster-&gt;slots[1] = B）。在 <strong>slave</strong> 发起选举，获得足够多的选票之后，成功当选时，也就是 <strong>slave</strong> 试图替代其已经下线的旧 <strong>master</strong>，成为新的 <strong>master</strong> 时，会增加它自己的 <em><strong>configEpoch</strong></em>，使其成为当前所有集群节点的 <em><strong>configEpoch</strong></em> 中的最大值。这样，该 <em><strong>slave</strong></em> 成为 <em><strong>master</strong></em> 后，就会向所有节点发送广播包，强制其他节点更新相关 <em><strong>slots</strong></em> 的负责节点为自己。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[redis集群管理]]></title>
+        <id>https://lehy786.github.io/post/redis-ji-qun-guan-li/</id>
+        <link href="https://lehy786.github.io/post/redis-ji-qun-guan-li/">
+        </link>
+        <updated>2021-04-20T01:56:15.000Z</updated>
+        <content type="html"><![CDATA[<hr>
+<h2 id="1数据分区">1.数据分区</h2>
+<p>Redis Cluser采用虚拟槽分区;<br>
+所有的键根据哈希函数映射到0~16383整数槽内;<br>
+计算公式：slot=CRC16（key）&amp;16383。<br>
+每个节点负责一部分槽：<br>
+|-- 0-5460 --|-- 5461-10922 -- | -- 10923-16383 -- |<br>
+|-- node-1--|------- node-2 ---- | -------- node-3 ----- |</p>
+<hr>
+<h2 id="2节点连接通信">2.节点连接通信</h2>
+<h3 id="21-节点握手">2.1 节点握手</h3>
+<p>在<code>node-6379</code>上对<code>node-6380</code>执行<code>cluster meet {ip} {port}</code>，node-6379则与<code>node-6380</code>尝试进行连接：</p>
+<pre><code>1）节点6379本地创建6380节点信息对象，并发送meet消息。
+2）节点6380接受到meet消息后，保存6379节点信息并回复pong消息。
+3）之后节点6379和6380彼此定期通过ping/pong消息进行正常的节点通信。
+</code></pre>
+<h3 id="22-通信流程">2.2 通信流程</h3>
+<p>分布式存储中需要提供维护节点元数据信息的机制，即：节点负责哪些数据，是否出现故障等状态信息。<br>
+Redis集群采用P2P的<code>Gossip协议</code>。</p>
+<pre><code>通信过程说明：
+1）集群中的每个节点都会单独开辟一个TCP通道，用于节点之间彼此 通信，通信端口号在基础端口上加10000。
+2）每个节点在固定周期内通过特定规则选择几个节点发送ping消息。
+3）接收到ping消息的节点用pong消息作为响应。
+
+</code></pre>
+<h3 id="23-gossip消息">2.3 Gossip消息</h3>
+<p>gossip协议是p2p方式的通信协议。通过节点之间不断交换信息，一段时间后所有节点都会知道整个集群完整的信息。常用的Gossip消息可分为：ping消息、pong消息、meet消息、fail消息等。</p>
+<pre><code>·meet消息：用于通知新节点加入。消息发送者通知接收者加入到当前 集群，meet消息通信正常完成后，接收节点会加入到集群中并进行周期性的 ping、pong消息交换。
+</code></pre>
+<pre><code>·ping消息：集群内交换最频繁的消息，集群内每个节点每秒向多个其 他节点发送ping消息，用于检测节点是否在线和交换彼此状态信息。ping消息发送封装了自身节点和部分其他节点的状态数据。
+</code></pre>
+<pre><code>·pong消息：当接收到ping、meet消息时，作为响应消息回复给发送方确 认消息正常通信。pong消息内部封装了自身状态数据。节点也可以向集群内广播自身的pong消息来通知整个集群对自身状态进行更新。
+</code></pre>
+<pre><code>·fail消息：当节点判定集群内另一个节点下线时，会向集群内广播一个 fail消息，其他节点接收到fail消息之后把对应节点更新为下线状态。具体细节将在后面10.6节“故障转移”中说明。
+</code></pre>
+<p>所有的消息格式划分为：消息头和消息体。</p>
+<p><em><strong>消息头：</strong></em><br>
+消息头包含发送节点自身状态数据。包含了发送节点关键信息，如节点id、槽映射、节点标识（主从角色，是否下线）等。</p>
+<pre><code>typedef struct {
+    char sig[4];        /* Siganture &quot;RCmb&quot; (Redis Cluster message bus). */
+    uint32_t totlen;    /* Total length of this message */
+    uint16_t ver;       /* Protocol version, currently set to 1. */
+    uint16_t port;      /* TCP base port number. */
+    uint16_t type;      /* Message type */
+    uint16_t count;     /* Only used for some kind of messages. */
+    uint64_t currentEpoch;  /* The epoch accordingly to the sending node. */
+    uint64_t configEpoch;   /* The config epoch if it's a master, or the last
+                               epoch advertised by its master if it is a
+                               slave. */
+    uint64_t offset;    /* Master replication offset if node is a master or
+                           processed replication offset if node is a slave. */
+    char sender[CLUSTER_NAMELEN]; /* Name of the sender node */
+    unsigned char myslots[CLUSTER_SLOTS/8];
+    char slaveof[CLUSTER_NAMELEN];
+    char myip[NET_IP_STR_LEN];    /* Sender IP, if not all zeroed. */
+    char notused1[34];  /* 34 bytes reserved for future usage. */
+    uint16_t cport;      /* Sender TCP cluster bus port */
+    uint16_t flags;      /* Sender node flags */
+    unsigned char state; /* Cluster state from the POV of the sender */
+    unsigned char mflags[3]; /* Message flags: CLUSTERMSG_FLAG[012]_... */
+    union clusterMsgData data;
+} clusterMsg;
+</code></pre>
+<p><em><strong>消息体：</strong></em></p>
+<pre><code>union clusterMsgData {
+    /* PING, MEET and PONG */
+    struct {
+        /* Array of N clusterMsgDataGossip structures */
+        clusterMsgDataGossip gossip[1];
+    } ping;
+
+    /* FAIL */
+    struct {
+        clusterMsgDataFail about;
+    } fail;
+
+    /* PUBLISH */
+    struct {
+        clusterMsgDataPublish msg;
+    } publish;
+
+    /* UPDATE */
+    struct {
+        clusterMsgDataUpdate nodecfg;
+    } update;
+};
+</code></pre>
+<p>当接收到ping、meet消息时，接收节点会解析消息内容并根据自身的识 别情况做出相应处理。接收节点收到ping/meet消息时，执行解析消息头和消息体流程：</p>
+<pre><code>·解析消息头过程：消息头包含了发送节点的信息，如果发送节点是新节点且消息是meet类型，则加入到本地节点列表；如果是已知节点，则尝试更新发送节点的状态，如槽映射关系、主从角色等状态。
+</code></pre>
+<pre><code>·解析消息体过程：如果消息体的clusterMsgDataGossip数组包含的节点 是新节点，则尝试发起与新节点的meet握手流程；如果是已知节点，则根据 clusterMsgDataGossip中的flags字段判断该节点是否下线，用于故障转移。
+</code></pre>
+<pre><code>消息处理完后回复pong消息，内容同样包含消息头和消息体，发送节点 接收到回复的pong消息后，采用类似的流程解析处理消息并更新与接收节点最后通信时间，完成一次消息通信。
+</code></pre>
+<h2 id="3redis中的纪元">3.Redis中的纪元</h2>
+<p><strong>currentEpoch:</strong><br>
+这是一个集群状态相关的概念，可以当做记录集群状态变更的递增版本号。每个集群节点，都会通过 <code>server.cluster-&gt;currentEpoch</code> 记录当前的 <code>currentEpoch</code>。</p>
+<p>集群节点创建时，不管是 <code>master</code> 还是 <code>slave</code>，都置 <code>currentEpoch</code> 为 0。当前节点接收到来自其他节点的包时，如果发送者的 <code>currentEpoch</code>（消息头部会包含发送者的 <code>currentEpoch</code>）大于当前节点的<code>currentEpoch</code>，那么当前节点会更新 <code>currentEpoch</code> 为发送者的 <code>currentEpoch</code>。因此，集群中所有节点的 <code>currentEpoch</code> 最终会达成一致，相当于对集群状态的认知达成了一致。</p>
+<p><strong>currentEpoch 作用:</strong><br>
+<code>currentEpoch</code> 作用在于，当集群的状态发生改变，某个节点为了执行一些动作需要寻求其他节点的同意时，就会增加 <code>currentEpoch</code> 的值。目前 <code>currentEpoch</code> 只用于 <code>slave</code> 的故障转移流程，这就跟哨兵中的<code>sentinel.current_epoch</code> 作用是一模一样的。当 <code>slave A</code> 发现其所属的 master 下线时，就会试图发起故障转移流程。首先就是增加 <code>currentEpoch</code> 的值，这个增加后的 <code>currentEpoch</code> 是所有集群节点中最大的。然后<code>slave A</code> 向所有节点发起拉票请求，请求其他 <code>master</code> 投票给自己，使自己能成为新的 <code>master</code>。其他节点收到包后，发现发送者的 <code>currentEpoch</code> 比自己的 <code>currentEpoch</code> 大，就会更新自己的 <code>currentEpoch</code>，并在尚未投票的情况下，投票给 <code>slave A</code>，表示同意使其成为新的 <code>master</code>。</p>
+<p><strong>configEpoch:</strong><br>
+这是一个集群节点配置相关的概念，每个集群节点都有自己独一无二的 <code>configepoch</code>。所谓的节点配置，实际上是指节点所负责的槽位信息。</p>
+<p>每一个 <code>master</code> 在向其他节点发送包时，都会附带其 <code>configEpoch</code> 信息，以及一份表示它所负责的 <code>slots</code> 信息。而 <code>slave</code> 向其他节点发送包时，其包中的 <code>configEpoch</code> 和负责槽位信息，是其 <code>master</code> 的 <code>configEpoch</code> 和负责的<code>slot</code>信息。节点收到包之后，就会根据包中的 <code>configEpoch</code> 和负责的 <code>slots</code> 信息，记录到相应节点属性中。</p>
+<p><strong>configEpoch 作用:</strong><br>
+<code>configEpoch</code> 主要用于解决不同的节点的配置发生冲突的情况。举个例子就明白了：节点A 宣称负责 <code>slot 1</code>，其向外发送的包中，包含了自己的 <code>configEpoch</code> 和负责的 <code>slots</code> 信息。节点 C 收到 A 发来的包后，发现自己当前没有记录 <code>slot 1</code> 的负责节点（也就是 <code>server.cluster-&gt;slots[1]</code> 为 NULL），就会将 A 置为 <code>slot 1</code> 的负责节点（<code>server.cluster-&gt;slots[1] = A</code>），并记录节点 A 的 <code>configEpoch</code>。后来，节点 C 又收到了 B 发来的包，它也宣称负责 <code>slot 1</code>，此时，如何判断 <code>slot 1</code> 到底由谁负责？</p>
+<p>这就是 <code>configEpoch</code> 起作用的时候了，C 在 B 发来的包中，发现它的 <code>configEpoch</code>，要比 A 的大，说明 B 是更新的配置。因此，就将 <code>slot 1</code> 的负责节点设置为 B（<code>server.cluster-&gt;slots[1] = B</code>）。在 <code>slave</code> 发起选举，获得足够多的选票之后，成功当选时，也就是 <code>slave</code> 试图替代其已经下线的旧 <code>master</code>，成为新的 <code>master</code> 时，会增加它自己的 <code>configEpoch</code>，使其成为当前所有集群节点的 <code>configEpoch</code> 中的最大值。这样，该 <code>slave</code> 成为 <code>master</code> 后，就会向所有节点发送广播包，强制其他节点更新相关 <code>slots</code> 的负责节点为自己。</p>
+<h2 id="4故障发现">4.故障发现</h2>
+<h3 id="41-主观客观下线">4.1 主观/客观下线</h3>
+<blockquote>
+<p>·主观下线：某个节点认为另一个节点不可用，即下线状态，但并不是最终的故障判定，只代表一个节点的意见，可能误判。</p>
+</blockquote>
+<blockquote>
+<p>·客观下线：指标记一个节点真正的下线，集群内多个节点都认为该节点不可用。如果是主节点故障，需要为该节点进行故障转移（槽需要再分配好）。</p>
+</blockquote>
+<p>节点会定期向其他节点发送ping消息，接收节点回复pong 消息作为响应。如果在cluster-node-timeout时间内通信一直失败，则认为接收节点存在故障。<br>
+每个节点内的clusterState结构都需要保存其他节点信息，用于从自身视角判断其他节点的状态。结构关键属性如下：</p>
+<pre><code>typedef struct clusterState {
+    clusterNode *myself;  /* 自身 */
+    dict *nodes;          /* Hash table of name -&gt; clusterNode structures */
+                        /* 当前集群内所有节点的字典集合，key为节点ID，value为对应节点ClusterNode结构 */ 
+    // ...
+} clusterState;
+
+typedef struct clusterNode {
+    int flags;      /*  当前节点状态,如:主从角色，是否下线等... */
+    mstime_t ping_sent;      /*  最后一次与该节点发送ping消息的时间  */
+    mstime_t pong_received;  /*  最后一次与该节点发送ping消息的时间  */
+    // ...
+}
+</code></pre>
+<p>其中flags，用于标示该节点对应状态:</p>
+<pre><code>#define CLUSTER_NODE_MASTER 1     /* The node is a master */
+#define CLUSTER_NODE_SLAVE 2      /* The node is a slave */
+#define CLUSTER_NODE_PFAIL 4      /* Failure? Need acknowledge */
+#define CLUSTER_NODE_FAIL 8       /* The node is believed to be malfunctioning */
+#define CLUSTER_NODE_MYSELF 16    /* This node is myself */
+#define CLUSTER_NODE_HANDSHAKE 32 /* We have still to exchange the first ping */
+#define CLUSTER_NODE_NOADDR   64  /* We don't know the address of this node */
+#define CLUSTER_NODE_MEET 128     /* Send a MEET message to this node */
+#define CLUSTER_NODE_MIGRATE_TO 256 /* Master elegible for replica migration. */
+#define CLUSTER_NODE_NOFAILOVER 512 /* Slave will not try to failver. */
+</code></pre>
+<h3 id="42-客观下线">4.2 客观下线</h3>
+<pre><code>typedef struct clusterNode {
+    list *fail_reports;      /*  记录了其他节点对该节点的下线报告 */
+    // ...
+}
+</code></pre>
+<h2 id="5-故障转移">5 故障转移</h2>
+<p>……</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[restTemplate.postForEntity报错400]]></title>
+        <id>https://lehy786.github.io/post/resttemplatepostforentity-bao-cuo-400/</id>
+        <link href="https://lehy786.github.io/post/resttemplatepostforentity-bao-cuo-400/">
+        </link>
+        <updated>2021-04-20T01:53:55.000Z</updated>
+        <content type="html"><![CDATA[<p>报错原因基本两个：</p>
+<ol>
+<li>HEADER错误，未设置application/json等；</li>
+<li>BODY错误，传递的参数序列化或反序列化出问题。</li>
+</ol>
+<p>如果传递的对象中，有Abstract类，则无法进行反序列化：</p>
+<pre><code>public interface ComponentInstance{...}
+</code></pre>
+<pre><code>public class Bean{
+    String name;
+    ComponentInstance originInstance;
+    ComponentInstance alterInstance;
+}
+</code></pre>
+<pre><code>ResponseEntity&lt;String&gt; result = restTemplate.postForEntity(url, bean, String.class);
+</code></pre>
+<p>以上这种情况就会报错400 null。</p>
+<p>需要使用一个可以序列化的对象替代<code>ComponentInstance alterInstance</code>才可。</p>
 ]]></content>
     </entry>
 </feed>

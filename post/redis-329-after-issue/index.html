@@ -1,0 +1,283 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>redis-3.2.9-after-issue | Gridea</title>
+<meta name="description" content="温故而知新">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://lehy786.github.io/favicon.ico?v=1618884189702">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://lehy786.github.io/styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://lehy786.github.io">
+        <img class="avatar" src="https://lehy786.github.io/images/avatar.png?v=1618884189702" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://lehy786.github.io">
+        <h1 class="site-title">Gridea</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            博文
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">redis-3.2.9-after-issue</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-20</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://lehy786.github.io/tag/Q0MTRx9du/">
+                    Redis
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <h1 id="redis-32x-after">Redis-3.2.x after</h1>
+<h2 id="32x">3.2.x</h2>
+<h4 id="flush-append-only-buffers-before-existing-4311-aof-329-font-colorred该版本未修复font">· Flush append only buffers before existing. #4311 <code>AOF</code> <code>3.2.9</code> <font color=red><code>该版本未修复</code></font></h4>
+<p>执行SHUTDOWN命令后，存在部分appendonly buffer未写入aof文件。</p>
+<h4 id="expire-then-persist-unexpected-behavior-4048-font-colorgreen329未复现font">· EXPIRE then PERSIST Unexpected Behavior #4048 <font color=green><code>3.2.9未复现</code></font></h4>
+<p>EXPIRE一个key，过期后执行PERSIST，该key仍会被持久化；EXPIRE一个key，过期后GET，再执行PERSIST，该key则正常地不被保存。</p>
+<h4 id="slave-is-unresponsive-when-loading-data-in-memory-after-resyncing-from-master-4183-328">· Slave is unresponsive when loading data in memory after resyncing from master #4183 <code>3.2.8</code></h4>
+<p>在集群模式下运行Redis 3.2.8。 主从故障切换后，新的slave服务器将从新的master服务器重新同步。 将数据复制到slave主机上的磁盘后，slave服务器开始将数据加载到内存中。 在重载期间，slave无响应直到超时，而不是返回LOADING响应。</p>
+<h2 id="4x">4.x</h2>
+<h5 id="redis-4x-new-psync2-feature-does-not-work-correctly-bug-located-4268-replication-401-font-colorred该版本未修复font">· Redis 4.x new PSYNC2 feature does not work correctly, bug located #4268 <code>replication</code> <code>4.0.1</code>  <font color=red><code>该版本未修复</code></font></h5>
+<p>当一个redis新成为从属，并且准备执行部分同步时，slave的repl_backlog将不会被初始化（即无法使用），从而它不会记录任何从master传递的命令。这使得slave的复制偏移总是比master的小。所以在切换之后，当新的slave希望与新的master进行PSYNC，但是偏移量检查进程将拒绝PSYNC命令，因为新master偏移量比slave小。</p>
+<h4 id="different-results-for-zadd-alpinedebian-docker-container-4391-non-critical-bug-3211-402-font-colorred该版本未修复font">· Different results for ZADD alpine/debian docker container #4391 <code>non critical bug</code> <code>3.2.11 &amp; 4.0.2</code> <font color=red><code>该版本未修复</code></font></h4>
+<p>将空字符串作为ZSET的score，使用Debian能成功执行，使用Alpine不能成功执行。</p>
+<p>Debian use libc and alpine musl.</p>
+<pre><code>1. Debian 
+# run command
+docker exec -it redis redis-cli &quot;ZADD&quot; &quot;session&quot; &quot;&quot; &quot;064f06e4rg60reg6&quot;
+# result
+(integer) 1
+</code></pre>
+<pre><code>2. Alpine
+# run command
+docker exec -it redis redis-cli &quot;ZADD&quot; &quot;session&quot; &quot;&quot; &quot;064f06e4rg60reg6&quot;
+# result
+(error) ERR value is not a valid float
+</code></pre>
+<h4 id="redis-server-startup-failed-when-using-mixed-rdbaof-4902-rdb-409-font-colorred该版本未修复font">· redis-server startup failed when using mixed RDB+AOF #4902 <code>RDB</code> <code>4.0.9</code> <font color=red><code>该版本未修复</code></font></h4>
+<pre><code>aof-use-rdb-preamble yes
+appendonly yes
+</code></pre>
+<p>保存RDB时追加了8字节的<code>checksum</code>，不论<code>rdbchecksum</code>是否开启：</p>
+<pre><code>    /* CRC64 checksum. It will be zero if checksum computation is disabled, the
+     * loading code skips the check in this case. */
+    cksum = rdb-&gt;cksum;
+    memrev64ifbe(&amp;cksum);
+    if (rioWrite(rdb,&amp;cksum,8) == 0) goto werr;
+    return C_OK;
+</code></pre>
+<p>加载RDB时，只有在<code>rdbchecksum</code>选项开启时才会读该8字节的<code>checksum</code>，</p>
+<pre><code>    /* Verify the checksum if RDB version is &gt;= 5 */
+    if (rdbver &gt;= 5 &amp;&amp; server.rdb_checksum) {
+        uint64_t cksum, expected = rdb-&gt;cksum;
+
+        if (rioRead(rdb,&amp;cksum,8) == 0) goto eoferr;
+        memrev64ifbe(&amp;cksum);
+        if (cksum == 0) {
+            serverLog(LL_WARNING,&quot;RDB file was saved with checksum disabled: no check performed.&quot;);
+        } else if (cksum != expected) {
+            serverLog(LL_WARNING,&quot;Wrong RDB checksum. Aborting now.&quot;);
+            rdbExitReportCorruptRDB(&quot;RDB CRC error&quot;);
+        }
+    }
+    return C_OK;
+</code></pre>
+<p>以至于关闭<code>checksum</code>选项时，RDB加载失败而导致启动报错。</p>
+<h4 id="redis-4x-lazyfree-memory-leak-may-happen-when-free-slowlog-entry-4323-402-font-colorredcritical-bugfont-font-colorred该版本未修复font-font-colorgreen407修复font">· Redis 4.x lazyfree: memory leak may happen when free slowlog entry #4323 <code>4.0.2</code>  <font color='red'><code>critical bug</code></font>  <font color=red><code>该版本未修复</code></font> <font color=green><code>4.0.7修复</code></font></h4>
+<p>We just use <code>sds</code> instead of <code>robj</code> to store fields for <code>OBJ_HASH</code>, <code>OBJ_SET</code>, <code>OBJ_ZSET</code>, <code>OBJ_LIST</code>. But for <code>OBJ_STRING</code> the value is still <code>robj</code></p>
+<pre><code>slowlog.c
+slowlogEntry *slowlogCreateEntry(client *c, robj **argv, int argc, long long duration) {
+    ...
+            /* Trim too long strings as well... */
+            if (argv[j]-&gt;type == OBJ_STRING &amp;&amp;
+                sdsEncodedObject(argv[j]) &amp;&amp;
+                sdslen(argv[j]-&gt;ptr) &gt; SLOWLOG_ENTRY_MAX_STRING)
+            {
+                sds s = sdsnewlen(argv[j]-&gt;ptr, SLOWLOG_ENTRY_MAX_STRING);
+
+                s = sdscatprintf(s,&quot;... (%lu more bytes)&quot;,
+                    (unsigned long)
+                    sdslen(argv[j]-&gt;ptr) - SLOWLOG_ENTRY_MAX_STRING);
+                se-&gt;argv[j] = createObject(OBJ_STRING,s);
+            } else {
+                se-&gt;argv[j] = argv[j];
+                incrRefCount(argv[j]);
+            }
+    ...
+}
+</code></pre>
+<p>当sdslen长度小于SLOWLOG_ENTRY_MAX_STRING， <code>slowlogEntry</code> 对象直接指向同一个对象并增加refcount。具体表现如下：</p>
+<pre><code>127.0.0.1:6379&gt; config set slowlog-log-slower-than 1
+OK
+127.0.0.1:6379&gt; set foo bar
+OK
+127.0.0.1:6379&gt; object refcount foo
+(integer) 2
+</code></pre>
+<p>如果<code>lazyfree</code>机制和<code>SLOWLOG reset</code> 同时调用了<code>decrRefCount()</code>,</p>
+<pre><code>void decrRefCount(robj *o) {
+    if (o-&gt;refcount == 1) {
+        switch(o-&gt;type) {
+        case OBJ_STRING: freeStringObject(o); break;
+        case OBJ_LIST: freeListObject(o); break;
+        case OBJ_SET: freeSetObject(o); break;
+        case OBJ_ZSET: freeZsetObject(o); break;
+        case OBJ_HASH: freeHashObject(o); break;
+        case OBJ_MODULE: freeModuleObject(o); break;
+        default: serverPanic(&quot;Unknown object type&quot;); break;
+        }
+        zfree(o);
+    } else {
+        if (o-&gt;refcount &lt;= 0) serverPanic(&quot;decrRefCount against refcount &lt;= 0&quot;);
+        if (o-&gt;refcount != OBJ_SHARED_REFCOUNT) o-&gt;refcount--;
+    }
+}
+</code></pre>
+<p>o-&gt;refcount 直接从2降到0，该对象将不会释放，而发生内存泄漏。</p>
+<h4 id="lua-set-question-when-using-min-slaves-to-write-configure-5301-lua-font-colorredcritical-bugfont-font-colorred4012未修复font">· Lua set question when using min-slaves-to-write configure. #5301 <code>Lua</code>  <font color='red'><code>critical bug</code></font> <font color=red><code>4.0.12未修复</code></font></h4>
+<p>当设置<code>min-slaves-to-write</code>为1时，如master无连接的slave，在<code>SET key value</code>命令时***应该返回错误无法插入***，但使用Lua执行同样内容的命令则可以执行成功。</p>
+<h4 id="fix-rdb-save-by-allowing-dumping-of-expire-keys-4950-font-colorred400-409未修复font-font-colorgreen4010修复font">· fix rdb save by allowing dumping of expire keys #4950  <font color='red'><code>4.0.0-4.0.9未修复</code></font> <font color=green><code>4.0.10修复</code></font></h4>
+<p>因开启aof-use-rdb-preamble，某些情况下出现数据不一致。</p>
+<pre><code>Test case:
+
+* Time1: SET a 10
+* Time2: EXPIREAT a $time5
+* Time3: INCR a
+* Time4: PERSIT A. Start bgrewiteaof with RDB preamble. The value of a is 11 without expire time.
+* Time5: Restart redis from the RDB+AOF: consistency violation.
+</code></pre>
+<p>此时a不是11，而是1。因为当Time5步骤时，重启redis加载RDB时，a已经过期了，这时加载到<code>INCR a</code>时就变成了把不存在的a增加1，最后得到1，出现数据不一致。</p>
+<h2 id="5x">5.x</h2>
+<h4 id="cluster-failover-unreliable-when-many-keys-are-expiring-4027-50-rc1-font-colorgreen该版本已修复font">· Cluster failover unreliable when many keys are expiring #4027 <code>5.0-rc1</code> <font color=green><code>该版本已修复</code></font></h4>
+<p>手动FAILOVER时，master暂停接收客户端的命令，此时slave会同步处理命令到与master的offset一致处，然后进行failover。虽然master暂停了客户端，但EXPIRE仍然在进行中，如果此时master中部分key已经失效，这将导致<code>DEL</code>命令也会被合成到slave执行并且master_repl_offset也会增加。而slave的实际偏移将会超过此前记录的master_repl_offset，导致failover失败。</p>
+<h4 id="mem_fragmentation_bytes-in-info-command-showing-insane-number-5580-500-502-font-colorgreen503修复font">· mem_fragmentation_bytes in info command showing insane number #5580 <code>5.0.0-5.0.2</code> <font color=green><code>5.0.3修复</code></font></h4>
+<p>当mem_fragmentation_bytes溢出为负数时，在info命令中显示为一个错误的超大正整数。</p>
+<h4 id="eviction-during-aof-loading-5686-400-502-font-colorgreen503修复font">· Eviction during AOF loading #5686 <code>4.0.0-5.0.2</code> <font color=green><code>5.0.3修复</code></font></h4>
+<p>AOF加载的时候，<code>CONFIG SET</code>命令可用，可能导致意外的错误，比如键被意外驱逐而导致数据不一致：</p>
+<pre><code>SET X 1000
+INCR X 1
+最后X的值为1
+</code></pre>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://lehy786.github.io/post/redis-cluster-nodes-can-shu-han-yi/">
+              <h3 class="post-title">
+                下一篇：redis-cluster-nodes-参数含义
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">温故而知新</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://lehy786.github.io/atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>
