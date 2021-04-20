@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://lehy786.github.io</id>
     <title>Gridea</title>
-    <updated>2021-04-19T14:41:06.331Z</updated>
+    <updated>2021-04-20T01:10:30.556Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://lehy786.github.io"/>
     <link rel="self" href="https://lehy786.github.io/atom.xml"/>
@@ -10,6 +10,31 @@
     <logo>https://lehy786.github.io/images/avatar.png</logo>
     <icon>https://lehy786.github.io/favicon.ico</icon>
     <rights>All rights reserved 2021, Gridea</rights>
+    <entry>
+        <title type="html"><![CDATA[ES 多条件过滤查询]]></title>
+        <id>https://lehy786.github.io/post/es-duo-tiao-jian-guo-lu-cha-xun/</id>
+        <link href="https://lehy786.github.io/post/es-duo-tiao-jian-guo-lu-cha-xun/">
+        </link>
+        <updated>2021-04-20T01:07:16.000Z</updated>
+        <content type="html"><![CDATA[<pre><code>// Java ES 多条件过滤查询条件
+BoolQueryBuilder queryTotal = QueryBuilders.boolQuery();
+if(StringUtils.isNotBlank(params.getRemarkFlag())){
+                if(&quot;1&quot;.equals(params.getRemarkFlag())){
+                    queryTotal.filter(QueryBuilders.existsQuery(&quot;remarks&quot;));
+                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;));
+                    queryTotal.mustNot(QueryBuilders.termQuery(&quot;remarks&quot;,0));
+                }else if(&quot;2&quot;.equals(params.getRemarkFlag())){
+                    queryTotal.must(QueryBuilders.boolQuery()
+                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,0))
+                            .should(QueryBuilders.termQuery(&quot;remarks&quot;,&quot;&quot;))
+                            .should(QueryBuilders.boolQuery()
+                                    .mustNot(QueryBuilders.existsQuery(&quot;remarks&quot;))));
+                }
+}
+
+</code></pre>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Hello Gridea]]></title>
         <id>https://lehy786.github.io/post/hello-gridea/</id>
