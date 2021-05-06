@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://lehy786.github.io/personal-note</id>
     <title>海仔</title>
-    <updated>2021-04-20T09:04:15.170Z</updated>
+    <updated>2021-05-06T03:14:29.658Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://lehy786.github.io/personal-note"/>
     <link rel="self" href="https://lehy786.github.io/personal-note/atom.xml"/>
@@ -10,6 +10,68 @@
     <logo>https://lehy786.github.io/personal-note/images/avatar.png</logo>
     <icon>https://lehy786.github.io/personal-note/favicon.ico</icon>
     <rights>All rights reserved 2021, 海仔</rights>
+    <entry>
+        <title type="html"><![CDATA[字节面试题收集]]></title>
+        <id>https://lehy786.github.io/personal-note/post/zi-jie-mian-shi-ti-shou-ji/</id>
+        <link href="https://lehy786.github.io/personal-note/post/zi-jie-mian-shi-ti-shou-ji/">
+        </link>
+        <updated>2021-05-06T03:05:59.000Z</updated>
+        <summary type="html"><![CDATA[<p>完善中……</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>完善中……</p>
+<!-- more -->
+<h3 id="线程参数的含义">《线程参数的含义》</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>参数含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>corePoolSize</td>
+<td>核心线程数</td>
+</tr>
+<tr>
+<td>maxinumPoolSize</td>
+<td>最大线程数</td>
+</tr>
+<tr>
+<td>keepAliveTime</td>
+<td>空闲线程存活时间</td>
+</tr>
+<tr>
+<td>unit</td>
+<td>存活时间单位</td>
+</tr>
+<tr>
+<td>workQueue</td>
+<td>线程存放队列</td>
+</tr>
+<tr>
+<td>threadFactory</td>
+<td>线程工厂</td>
+</tr>
+<tr>
+<td>handler</td>
+<td>线程池拒绝处理后的任务</td>
+</tr>
+</tbody>
+</table>
+<p><code>corePoolSize</code> 核心线程数，核心线程创建后不会消除，是常驻线程，处理任务完成后空闲并等待任务分配。</p>
+<p><code>maxinumPoolSize</code> 代表的是最大线程数，它与核心线程数相对应，表示最大允许被创建的线程数，比如当前任务较多，将核心线程数都用完了，还无法满足需求时，此时就会创建新的线程，但是线程池内线程总数不会超过最大线程数</p>
+<figure data-type="image" tabindex="1"><img src="https://lehy786.github.io/personal-note/post-images/1620270491774.png" alt="" loading="lazy"></figure>
+<p><code>keepAliveTime</code>、<code>unit</code> 表示超出核心线程数之外的线程的空闲存活时间，也就是核心线程不会消除，但是超出核心线程数的部分线程如果空闲一定的时间则会被消除,我们可以通过 setKeepAliveTime 来设置空闲时间</p>
+<p><code>workQueue</code> 用来存放待执行的任务，假设我们现在核心线程都已被使用，还有任务进来则全部放入队列，直到整个队列被放满但任务还再持续进入则会开始创建新的线程</p>
+<p><code>ThreadFactory</code> 实际上是一个线程工厂，用来生产线程执行任务。我们可以选择使用默认的创建工厂，产生的线程都在同一个组内，拥有相同的优先级，且都不是守护线程。当然我们也可以选择自定义线程工厂，一般我们会根据业务来制定不同的线程工厂</p>
+<p><code>Handler</code> 任务拒绝策略，有两种情况，第一种是当我们调用shutdown 等方法关闭线程池后，这时候即使线程池内部还有没执行完的任务正在执行，但是由于线程池已经关闭，我们再继续想线程池提交任务就会遭到拒绝。另一种情况就是当达到最大线程数，线程池已经没有能力继续处理新提交的任务时，这是也就拒绝</p>
+<p>整个流程：<br>
+<img src="https://lehy786.github.io/personal-note/post-images/1620270741380.png" alt="" loading="lazy"></p>
+<hr>
+<h3 id="">《》</h3>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[jedis-2.9-after-issue]]></title>
         <id>https://lehy786.github.io/personal-note/post/jedis-29-after-issue/</id>
@@ -1241,32 +1303,6 @@ typedef struct clusterNode {
 </code></pre>
 <h2 id="5-故障转移">5 故障转移</h2>
 <p>……</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[restTemplate.postForEntity报错400]]></title>
-        <id>https://lehy786.github.io/personal-note/post/resttemplatepostforentity-bao-cuo-400/</id>
-        <link href="https://lehy786.github.io/personal-note/post/resttemplatepostforentity-bao-cuo-400/">
-        </link>
-        <updated>2021-04-20T01:53:55.000Z</updated>
-        <content type="html"><![CDATA[<p>报错原因基本两个：</p>
-<ol>
-<li>HEADER错误，未设置application/json等；</li>
-<li>BODY错误，传递的参数序列化或反序列化出问题。</li>
-</ol>
-<p>如果传递的对象中，有Abstract类，则无法进行反序列化：</p>
-<pre><code>public interface ComponentInstance{...}
-</code></pre>
-<pre><code>public class Bean{
-    String name;
-    ComponentInstance originInstance;
-    ComponentInstance alterInstance;
-}
-</code></pre>
-<pre><code>ResponseEntity&lt;String&gt; result = restTemplate.postForEntity(url, bean, String.class);
-</code></pre>
-<p>以上这种情况就会报错400 null。</p>
-<p>需要使用一个可以序列化的对象替代<code>ComponentInstance alterInstance</code>才可。</p>
 ]]></content>
     </entry>
 </feed>
